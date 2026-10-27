@@ -182,6 +182,7 @@ def main(work):
         else:
             gain = bed + kit.over_bed(spec["bed_db"]) - take["l50"]
             gain = min(gain, -1.0 - 20 * np.log10(np.max(np.abs(x)) + 1e-9))
+        gain += cue.get("gain_db", 0)
         start = at + spec["offset_ms"] / 1000 - sync
         place(effects, panned(x, pan) * 10 ** (gain / 20), start)
         report.append({"t": at, "role": role, "id": take["id"], "start": round(start, 4), "bed_lufs": bed, "gain_db": round(float(gain), 2), "pitch": steps})

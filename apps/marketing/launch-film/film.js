@@ -15,8 +15,6 @@ const script = await (await fetch('./script.json')).json();
 const icons = (await (await fetch('/node_modules/@iconify-json/lucide/icons.json')).json()).icons;
 const avatar = '/tests/app/fixtures/product-screenshots/rodrigo-avatar.png';
 const marks = (name) => `/assets/postiz-socials/${name}.svg`;
-const shots = '/assets/screenshots';
-const capture = '/tmp/launch-film/capture';
 
 const T = {
 	release: 0.25,
@@ -561,12 +559,16 @@ const revealWord = wordmark(revealLayer, 'OpenPost');
 const revealLine = make(
 	revealLayer,
 	'box closing',
-	{ y: 690 },
+	{ y: 586 },
 	'The all-in-one content team for solo founders.'
 );
 revealLine.style.fontSize = '40px';
 revealLine.style.color = 'var(--muted)';
-cue(T.logo, 'impact');
+for (let i = 0; i < 4; i++) cue(T.logo - 0.32 + i * 0.08, 'pop');
+cue(T.logo, 'land');
+cue(T.logo + 0.72, 'whoosh');
+cue(T.logo + 1.25, 'tick');
+cue(T.logo, 'impact', { gain_db: 2 });
 cue(T.logo + 0.02, 'shimmer');
 // The dive accelerates into its last frames: the swoosh peaks there.
 cue(T.workflow - 0.19, 'swoosh');
@@ -590,109 +592,121 @@ function revealScene(t) {
 	anim(revealLine, { y: (1 - line) * 24, o: line, blur: (1 - line) * 8 });
 }
 
-// --- 3. Workflows: the release becomes a draft; the camera follows the run ---------------------
+// --- 3. Workflows: authored nodes, branching paths and a camera that follows the run ---------
 const flowLayer = layer();
 const flowTitle = title(flowLayer, 'Your release becomes a draft.', ['a', 'draft.']);
 const flowCam = cam(flowLayer);
-const flowPan = make(flowCam, 'world');
-const flow = { y: 380, scale: 2300 / 1888 };
-const flowShot = make(flowPan, 'box', { x: 0, y: flow.y, w: 2300 });
-image(flowShot, `${shots}/workflows-detail-light.png`).style.width = '2300px';
-flowShot.style.cssText +=
-	';border-radius:36px;overflow:hidden;box-shadow:0 30px 80px rgb(43 38 33 / 12%)';
-const flowNodes = [
-	[72, 512],
-	[674, 1110],
-	[1273, 1710]
-].map(([x0, x1]) => ({
-	x: x0 * flow.scale,
-	y: flow.y + 128 * flow.scale,
-	w: (x1 - x0) * flow.scale,
-	h: 152 * flow.scale,
-	cx: ((x0 + x1) / 2) * flow.scale
-}));
-const edgeY = flow.y + 204 * flow.scale;
-const edges = [
-	[512 * flow.scale, 674 * flow.scale],
-	[1112 * flow.scale, 1272 * flow.scale]
+const flowViewport = make(flowCam, 'box flow-viewport', { x: 0, y: 225, w: 1920, h: 855 });
+const flowPan = make(flowViewport, 'world');
+flowPan.style.transformOrigin = '0 0';
+// These use the app's native node categories: GitHub, condition, Builder, approval and wait.
+const flowSpec = [
+	['github', 'GitHub release', script.repository, 80, 310, 'trigger', 0.45],
+	['git-branch', 'Stable release?', 'Check release type', 620, 310, 'flow', 1.2],
+	['sparkles', 'Build draft', 'Release notes to post', 1160, 100, 'ai', 2.05],
+	['check', 'Review post', 'Ready for your approval', 1700, 100, 'flow', 3.15],
+	['clock', 'Wait', 'Pre-release · wait 1 day', 1160, 580, 'flow', null],
+	['square-pen', 'Create draft', 'Keep the release notes', 1700, 580, 'content', null],
+	['check', 'Review post', 'Your review comes first', 2240, 580, 'flow', null]
 ];
-const rings = flowNodes.map((frame) => {
-	const ring = make(flowPan, 'box', frame);
-	ring.style.cssText +=
-		';border-radius:26px;border:5px solid var(--mark);box-shadow:0 0 0 12px rgb(180 83 9 / 14%), 0 18px 50px rgb(180 83 9 / 22%)';
-	return ring;
+const flowNodes = flowSpec.map(([glyph, label, detail, x, y, category, at]) => {
+	const node = make(
+		flowPan,
+		`box flow-node ${category}`,
+		{ x, y, w: 390, h: 142 },
+		`<span class="flow-port input"></span><div class="row" style="gap:20px"><span class="flow-icon">${icon(glyph, 34)}</span><div><b>${label}</b><p>${detail}</p></div></div><div class="flow-state">${icon('circle', 15)}<span>Ready</span></div><span class="flow-port output"></span>`
+	);
+	return {
+		node,
+		x,
+		y,
+		w: 390,
+		h: 142,
+		cx: x + 195,
+		cy: y + 71,
+		at: at === null ? null : T.workflow + at,
+		state: node.querySelector('.flow-state')
+	};
 });
-const pulse = make(flowPan, 'box', { x: 0, y: edgeY - 13, w: 26, h: 26 });
-pulse.style.cssText +=
-	';border-radius:50%;background:var(--mark);box-shadow:0 0 28px 8px rgb(180 83 9 / 45%)';
-const draftNote = make(
-	flowPan,
-	'box chip-note',
-	{ x: flowNodes[1].x + 90, y: flowNodes[1].y + flowNodes[1].h + 34 },
-	`<span style="color:var(--green)">${icon('circle-check', 22)}</span>Draft created`
-);
-draftNote.style.transform = 'scale(1.3)';
-const miniRelease = releaseCard(flowLayer, { x: 660, y: 330, w: 600, h: 380 });
-const nodeTimes = [T.workflow + 0.75, T.workflow + 1.7, T.workflow + 2.65];
-cue(nodeTimes[0], 'land');
-cue(nodeTimes[1], 'pop');
-cue(nodeTimes[1] + 0.12, 'ding');
-cue(nodeTimes[2], 'pop');
-// The pan keeps the active node centred, following the run's pulse.
-function flowFocus(t) {
-	let focus = flowNodes[0].cx;
-	for (let i = 0; i < 2; i++) {
-		const p = prog(t, nodeTimes[i] + 0.1, nodeTimes[i + 1], ease.inOut);
-		focus = lerp(focus, flowNodes[i + 1].cx, p);
+const flowEdges = [
+	[0, 1, ''],
+	[1, 2, 'Yes'],
+	[2, 3, ''],
+	[1, 4, 'No'],
+	[4, 5, ''],
+	[5, 6, '']
+].map(([from, to, label]) => {
+	const a = flowNodes[from],
+		b = flowNodes[to];
+	const x = a.x + a.w,
+		y = a.cy,
+		end = b.x;
+	const path = `M${x} ${y} C${x + 76} ${y},${end - 76} ${b.cy},${end} ${b.cy}`;
+	const holder = make(
+		flowPan,
+		'box flow-edge',
+		{ x: 0, y: 0, w: 2700, h: 850 },
+		`<svg width="2700" height="850"><path d="${path}" fill="none" stroke="var(--border)" stroke-width="3"/><path class="run-path" d="${path}" fill="none" stroke="var(--mark)" stroke-width="4" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/></svg>`
+	);
+	if (label) make(flowPan, 'box flow-branch', { x: x + 56, y: (y + b.cy) / 2 - 17 }, label);
+	return { holder, path: holder.querySelector('.run-path'), from: a, to: b };
+});
+// Edges live behind the nodes, with no screenshot or highlight overlay underneath.
+flowNodes.forEach(({ node }) => flowPan.append(node));
+const flowKeys = [
+	[0, 500, 410, 0.78],
+	[0.55, 400, 410, 1.13],
+	[1.25, 865, 410, 1.08],
+	[2.1, 1385, 250, 1.06],
+	[2.65, 1355, 430, 0.7],
+	[3.5, 1895, 171, 1.13]
+];
+function flowCamera(t) {
+	let [, x, y, zoom] = flowKeys[0];
+	for (let i = 1; i < flowKeys.length; i++) {
+		const [a, ax, ay, az] = flowKeys[i - 1],
+			[b, bx, by, bz] = flowKeys[i];
+		if (t >= T.workflow + a) {
+			const p = prog(t, T.workflow + a, T.workflow + b, ease.inOut);
+			x = lerp(ax, bx, p);
+			y = lerp(ay, by, p);
+			zoom = lerp(az, bz, p);
+		}
 	}
-	return 960 - focus;
+	return { x: 960 - x * zoom, y: 400 - y * zoom, s: zoom };
 }
-const reviewScreen = () => {
-	const node = flowNodes[2];
-	return { x: 960 - node.w / 2, y: node.y, w: node.w, h: node.h };
-};
-
+const reviewScreen = () => ({
+	x: 960 - (390 * 1.13) / 2,
+	y: 625 - (142 * 1.13) / 2,
+	w: 390 * 1.13,
+	h: 142 * 1.13
+});
+for (const node of flowNodes) if (node.at !== null) cue(node.at, 'land');
+cue(T.workflow + 1.47, 'whoosh');
+cue(T.workflow + 2.35, 'ding');
+cue(T.workflow + 2.65, 'swoosh');
+cue(T.workflow + 3.15, 'pop');
 function flowScene(t) {
 	if (!show(flowLayer, between(t, T.dive + 0.3, T.composer + 0.6))) return;
 	flowTitle(t, T.workflow + 0.15, T.composer - 0.6);
 	const through = prog(t, T.dive + 0.5, T.workflow + 0.15, ease.expoOut);
 	const out = prog(t, T.composer - 0.55, T.composer + 0.2, ease.expoInOut);
-	anim(flowCam, {
-		s: lerp(0.6, 1, through),
-		o: through * (1 - out),
-		blur: (1 - through) * 10,
-		rx: (1 - through) * 18
+	anim(flowCam, { s: lerp(0.7, 1, through), o: through * (1 - out), blur: (1 - through) * 10 });
+	anim(flowPan, flowCamera(t));
+	flowNodes.forEach(({ node, at, state }, i) => {
+		const enter = prog(t, T.workflow - 0.3 + i * 0.055, T.workflow + 0.3 + i * 0.055);
+		anim(node, { y: (1 - enter) * 34, o: enter });
+		const active = at !== null && t >= at;
+		const review = i === 3 && active;
+		node.classList.toggle('active', active);
+		state.innerHTML = `${icon(review ? 'clock' : active ? 'circle-check' : 'circle', 15)}<span>${review ? 'Awaiting review' : active ? 'Completed' : 'Ready'}</span>`;
+		state.style.color = review ? 'var(--amber)' : active ? 'var(--green)' : 'var(--muted)';
 	});
-	anim(flowPan, { x: flowFocus(t) });
-	// The release from the opening docks onto the GitHub trigger.
-	const dock = prog(t, T.workflow + 0.05, nodeTimes[0], ease.expoInOut);
-	const target = flowNodes[0];
-	anim(miniRelease.node, {
-		x: lerp(0, 960 - 960, dock),
-		y: lerp(-760, target.y + target.h / 2 - 520, dock),
-		s: lerp(1.2, target.w / 600, dock),
-		r: lerp(-10, 0, dock),
-		o:
-			prog(t, T.workflow, T.workflow + 0.1) *
-			(1 - prog(t, nodeTimes[0] - 0.05, nodeTimes[0] + 0.15))
+	flowEdges.forEach(({ holder, path, from, to }) => {
+		anim(holder, { o: through });
+		const travel = to.at === null ? 0 : prog(t, from.at + 0.12, to.at - 0.05, ease.inOut);
+		path.style.strokeDashoffset = String(1 - travel);
 	});
-	rings.forEach((ring, i) => {
-		const lit = prog(t, nodeTimes[i], nodeTimes[i] + 0.3, ease.back);
-		const fade = i < 2 ? 1 - prog(t, nodeTimes[i + 1], nodeTimes[i + 1] + 0.3) * 0.75 : 1;
-		anim(ring, { s: lerp(1.12, 1, lit), o: lit * fade });
-	});
-	let px = edges[0][0];
-	let po = 0;
-	for (const [i, [a, b]] of edges.entries()) {
-		const p = prog(t, nodeTimes[i] + 0.15, nodeTimes[i + 1] - 0.05, ease.inOut);
-		if (p > 0 && p < 1) {
-			px = lerp(a, b, p);
-			po = 1;
-		}
-	}
-	anim(pulse, { x: px - 13, o: po });
-	const note = prog(t, nodeTimes[1] + 0.1, nodeTimes[1] + 0.5, ease.back);
-	anim(draftNote, { y: (1 - note) * 20, s: note * 1.3, o: note });
 }
 
 // --- 4. Composer: review the draft once ---------------------------------------------------
@@ -812,13 +826,34 @@ const networkCards = [
 	['mastodon', 'Mastodon', 500]
 ].map(([platform, mark, limit], i) => {
 	const holder = make(ring, 'box', { x: 960 - cardWidth / 2, y: cardTop, w: cardWidth });
-	const shot = image(holder, `${capture}/preview-${platform}.png`);
-	shot.style.cssText = `width:${cardWidth}px;border-radius:18px;box-shadow:0 28px 70px rgb(43 38 33 / 16%)`;
-	let short;
-	if (platform === 'x') {
-		short = image(holder, `${capture}/preview-x-short.png`);
-		short.style.cssText = `position:absolute;left:0;top:0;width:${cardWidth}px;border-radius:18px`;
-	}
+	const native = make(holder, `social-card social-${platform}`);
+	const networkHeader = make(native, 'social-header row');
+	image(networkHeader, avatar, 'social-avatar');
+	make(
+		networkHeader,
+		'',
+		{},
+		`<b>Rodrigo</b><div class="muted">${platform === 'linkedin' ? 'Founder at Lumen · 1h' : '@lumen.app · 1h'}</div>`
+	);
+	make(networkHeader, 'social-more muted', {}, icon('ellipsis', 24));
+	const postText = make(native, 'social-copy', {}, script.draft);
+	const media = make(native, 'social-media', { w: 554, h: 290 });
+	artwork(media, { x: 0, y: 0 }, 554 / 1200);
+	const actions =
+		platform === 'linkedin'
+			? ['thumbs-up', 'message-circle', 'repeat-2', 'send']
+			: ['message-circle', 'repeat-2', 'heart', 'share'];
+	make(
+		native,
+		'social-actions row muted',
+		{},
+		actions
+			.map(
+				(name) =>
+					`<span class="row" style="gap:8px">${icon(name, 23)}<span>${name === 'heart' || name === 'thumbs-up' ? '24' : '3'}</span></span>`
+			)
+			.join('')
+	);
 	const badge = make(holder, 'box badge', { x: -24, y: -24 });
 	image(badge, marks(mark));
 	const note = make(
@@ -827,7 +862,7 @@ const networkCards = [
 		{ x: cardWidth - 176, y: -26 },
 		`${[...script.draft].length} / ${limit.toLocaleString('en-US')}`
 	);
-	return { holder, short, badge, note, i };
+	return { holder, postText, badge, note, i };
 });
 const xCard = networkCards[2];
 const shortNote = make(
@@ -841,8 +876,8 @@ cue(T.shorten, 'tick');
 cue(T.shorten + 0.15, 'pop');
 // The zoom-through is fastest halfway: the swoosh peaks there.
 cue(T.editor - 0.29, 'swoosh');
-// The X card's image sits at (74, 107) to (572, 368) inside its 600 px holder.
-const xMedia = { x: 323, y: 238, w: 498 };
+// The authored media slot is stable while the X text changes, preserving the zoom-through.
+const xMedia = { x: 300, y: 383, w: 554 };
 
 function cardsScene(t) {
 	if (!show(cardsLayer, between(t, T.networks - 0.05, T.editor + 0.1))) return;
@@ -877,7 +912,10 @@ function cardsScene(t) {
 			o: prog(t, T.networks + delay + 0.4, T.networks + delay + 0.7) * (1 - zoom)
 		});
 	});
-	anim(xCard.short, { o: prog(t, T.shorten, T.shorten + 0.35, ease.inOut) });
+	xCard.postText.textContent = t >= T.shorten + 0.15 ? script.short : script.draft;
+	anim(xCard.postText, {
+		y: t >= T.shorten ? -4 * Math.sin(prog(t, T.shorten, T.shorten + 0.35) * Math.PI) : 0
+	});
 	xCard.note.textContent = `${t >= T.shorten + 0.15 ? [...script.short].length : [...script.draft].length} / 280`;
 	const noteIn = prog(t, T.shorten + 0.1, T.shorten + 0.5, ease.back);
 	anim(shortNote, { s: noteIn, o: noteIn * (1 - zoom) });
@@ -1059,31 +1097,63 @@ const scheduleTitle = title(scheduleLayer, 'Schedule it once.', ['once.']);
 const outcomeTitle = title(scheduleLayer, 'Every outcome, visible.', ['visible.']);
 const calendarCam = make(scheduleLayer, 'world');
 calendarCam.style.transformOrigin = '0 0';
-const calendar = { x: 283, y: 205, scale: 1.2 };
-const calendarShot = make(calendarCam, 'box', {
+const calendar = { x: 160, y: 225, w: 1600, header: 136, row: 130, col: 1600 / 7 };
+const calendarBoard = make(calendarCam, 'box calendar-board', {
 	x: calendar.x,
 	y: calendar.y,
-	w: 1128 * calendar.scale
+	w: calendar.w,
+	h: 786
 });
-image(calendarShot, `${shots}/calendar-detail-light.png`).style.width =
-	`${1128 * calendar.scale}px`;
-// Calendar cells in the capture's CSS pixels (half its 2x size).
-const cell = (x0, y0, x1, y1) => ({
-	x: calendar.x + x0 * calendar.scale,
-	y: calendar.y + y0 * calendar.scale,
-	w: (x1 - x0) * calendar.scale,
-	h: (y1 - y0) * calendar.scale
+make(
+	calendarBoard,
+	'calendar-toolbar row',
+	{},
+	`<b>Posts</b><span class="calendar-view">Calendar <span class="muted">List</span></span><span class="month-nav">${icon('chevron-left', 22)} October 2026 ${icon('chevron-right', 22)}</span><span class="button ordinary">Today</span><span class="button focal">${icon('plus', 20)} New post</span>`
+);
+const week = make(calendarBoard, 'calendar-week');
+for (const day of ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']) make(week, '', {}, day);
+const monthGrid = make(calendarBoard, 'calendar-grid');
+Array.from({ length: 35 }, (_, i) => {
+	const day = i < 3 ? 28 + i : i > 33 ? i - 33 : i - 2;
+	const node = make(
+		monthGrid,
+		`calendar-day${i < 3 || i > 33 ? ' outside' : ''}`,
+		{},
+		`<span class="date${day === 15 && i === 17 ? ' today' : ''}">${day}</span>`
+	);
+	return { node, day, i };
 });
-const ourSlot = cell(492, 420, 634, 478);
-const retrySlot = cell(647, 427, 788, 481);
-const centre = (slot) => ({ x: slot.x + slot.w / 2, y: slot.y + slot.h / 2 });
-function calendarChip(frame, label, time) {
+const slot = (index) => ({
+	x: calendar.x + (index % 7) * calendar.col + 10,
+	y: calendar.y + calendar.header + Math.floor(index / 7) * calendar.row + 45,
+	w: calendar.col - 20,
+	h: 77
+});
+const ourSlot = slot(17);
+const retrySlot = slot(18);
+const centre = (frame) => ({ x: frame.x + frame.w / 2, y: frame.y + frame.h / 2 });
+function calendarChip(frame, label, time, mark = 'Bluesky') {
 	const chip = make(calendarCam, 'box cal-chip', frame);
-	chip.innerHTML = `<div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${label}</div><div class="meta"><span class="status"></span><span>${time}</span></div>`;
+	chip.innerHTML = `<div class="cal-text">${label}</div><div class="meta"><span class="status"></span><span class="row" style="gap:6px">${time}<img src="${marks(mark)}" alt="" width="16" height="16"></span></div>`;
 	return { chip, status: chip.querySelector('.status') };
 }
-const ourChip = calendarChip(ourSlot, `${script.product} 2.0 is live`, '5 PM');
-const retryChip = calendarChip(retrySlot, 'Launch notes for the…', '5 PM');
+const backgroundPosts = [
+	[4, 'What we shipped this week', '10 AM', 'Threads'],
+	[7, 'Building in the open', '2 PM', 'Mastodon'],
+	[9, 'A small update. A big difference.', '9 AM', 'X'],
+	[12, 'The idea behind Lumen', '11 AM', 'Linkedin'],
+	[14, 'Offline, wherever you work', '10 AM', 'Bluesky'],
+	[23, 'A closer look at sync', '3 PM', 'Threads'],
+	[25, 'Your questions, answered', '11 AM', 'Linkedin'],
+	[28, 'What comes next', '2 PM', 'Mastodon']
+].map(([index, label, time, mark]) => {
+	const post = calendarChip(slot(index), label, time, mark);
+	post.status.innerHTML = `${icon('check', 14)}${index < 17 ? 'Published' : 'Scheduled'}`;
+	post.chip.classList.add(index < 17 ? 'past' : 'planned');
+	return post;
+});
+const ourChip = calendarChip(ourSlot, `${script.product} 2.0 is live`, '5 PM', 'X');
+const retryChip = calendarChip(retrySlot, 'The story behind 2.0', '5 PM', 'Linkedin');
 // The close-up: a time, the Schedule button, one click.
 const closeup = make(scheduleLayer, 'box row', { x: 560, y: 480, w: 800, h: 120 });
 closeup.style.cssText += ';gap:18px;justify-content:center';
@@ -1103,6 +1173,8 @@ const states = (at, fails) => [
 const ourStates = states(T.publish, false);
 const retryStates = states(T.publish + 1.1, true);
 cue(T.schedule + 1.05, 'land');
+backgroundPosts.forEach((_, i) => cue(T.schedule + 1.25 + i * 0.055, 'tick'));
+cue(T.publish, 'tick');
 cue(ourStates[1][0], 'ding');
 cue(retryStates[1][0], 'error');
 cue(retryStates[2][0], 'tick');
@@ -1144,7 +1216,7 @@ function scheduleScene(t) {
 	const both = { x: (ours.x + centre(retrySlot).x) / 2, y: ours.y };
 	const focus = { x: lerp(ours.x, both.x, outcome), y: lerp(ours.y, both.y, outcome) };
 	const drift = prog(t, T.schedule + 1.55, T.publish - 0.5, ease.linear) * 0.06;
-	const zoom = lerp(2.8, 1 + drift, pull) * lerp(1, 2.3, outcome);
+	const zoom = lerp(2.4, 1 + drift, pull) * lerp(1, 1.9, outcome);
 	const screen = { x: lerp(focus.x, 960, outcome), y: lerp(focus.y, 600, outcome) };
 	anim(calendarCam, {
 		x: screen.x - focus.x * zoom,
@@ -1160,6 +1232,11 @@ function scheduleScene(t) {
 		y: (1 - land) * -60,
 		o: prog(t, T.schedule + 0.9, T.schedule + 1.0)
 	});
+	backgroundPosts.forEach(({ chip }, i) => {
+		const at = T.schedule + 1.25 + i * 0.055;
+		const p = prog(t, at, at + 0.35);
+		anim(chip, { y: (1 - p) * 12, o: p });
+	});
 	const bumpRetry = chipState(retryChip, t, retryStates);
 	anim(retryChip.chip, { s: 1 + bumpRetry * 0.1, o: prog(t, T.publish + 1.0, T.publish + 1.1) });
 }
@@ -1170,7 +1247,7 @@ const resultsTitle = title(resultsLayer, 'See what lands.', ['lands.']);
 const resultsCam = make(resultsLayer, 'world');
 resultsCam.style.transformOrigin = '0 0';
 const stats = [
-	['eye', 'Views', 12400, (v) => `${(v / 1000).toFixed(1)}K`],
+	['eye', 'Views', 13290, (v) => `${(v / 1000).toFixed(1)}K`],
 	['heart', 'Engagement', 1284, (v) => Math.round(v).toLocaleString('en-US')],
 	['users', 'New followers', 312, (v) => `+${Math.round(v)}`]
 ].map(([name, label, value, format], i) => {
@@ -1181,19 +1258,64 @@ const stats = [
 const chart = { x: 140, y: 430, w: 1640 };
 const chartCard = make(resultsCam, 'box card', { x: chart.x, y: chart.y, w: chart.w, h: 560 });
 chartCard.style.overflow = 'hidden';
-image(chartCard, `${shots}/analytics-detail-light.png`).style.cssText =
-	'position:absolute;left:30px;top:30px;width:1580px';
-const chartMask = make(chartCard, 'box', { x: 0, y: 0, w: chart.w, h: 560 });
-chartMask.style.background = 'var(--surface)';
-// The launch-day spike in the capture sits near (1248, 520) on the stage.
-const spike = { x: 1270, y: 760 };
+make(
+	chartCard,
+	'chart-toolbar row',
+	{},
+	`<div><b>Views over time</b><p class="muted">Across your connected accounts</p></div><span class="button ordinary">Last 14 days ${icon('chevron-down', 18)}</span>`
+);
+const chartValues = [180, 220, 190, 310, 270, 460, 390, 520, 470, 680, 950, 3400, 2420, 2810];
+const chartPlot = { x: 100, y: 140, w: 1460, h: 320 };
+const chartPoints = chartValues.map((value, i) => [
+	chartPlot.x + (i * chartPlot.w) / 13,
+	chartPlot.y + chartPlot.h * (1 - value / 4000)
+]);
+make(
+	chartCard,
+	'box',
+	{ x: 0, y: 0, w: 1640, h: 560 },
+	`<svg width="1640" height="560">${[0, 1000, 2000, 3000, 4000]
+		.map((value) => {
+			const y = chartPlot.y + chartPlot.h * (1 - value / 4000);
+			return `<line x1="100" y1="${y}" x2="1560" y2="${y}" stroke="var(--line)"/><text x="76" y="${y + 6}" text-anchor="end" fill="var(--muted)" font-size="18">${value ? value / 1000 + 'K' : '0'}</text>`;
+		})
+		.join(
+			''
+		)}${[0, 3, 6, 9, 13].map((i) => `<text x="${chartPoints[i][0]}" y="505" text-anchor="middle" fill="var(--muted)" font-size="18">Oct ${i + 2}</text>`).join('')}</svg>`
+);
+// Dithered stacked columns mirror the app chart, with an authored sample-data series.
+const chartSeries = make(chartCard, 'box chart-series', { x: 0, y: 0, w: 1640, h: 560 });
+const chartBars = chartValues.map((value, i) => {
+	const height = (value / 4000) * chartPlot.h;
+	const column = make(chartSeries, 'box chart-column', {
+		x: chartPoints[i][0] - 24,
+		y: chartPlot.y + chartPlot.h - height,
+		w: 48,
+		h: height
+	});
+	column.style.transformOrigin = '50% 100%';
+	for (const [ratio, color] of [
+		[0.28, '#a48bc4'],
+		[0.22, '#4b966b'],
+		[0.5, '#cf793e']
+	]) {
+		const segment = make(column, '');
+		segment.style.cssText = `height:${ratio * 100}%;background-color:${color};background-image:${ditherUrl('rgb(255 255 255 / 0.3)')};background-size:8px 100%;border:1px solid rgb(43 38 33 / 12%)`;
+	}
+	return column;
+});
+const spike = { x: chart.x + chartPoints[11][0], y: chart.y + chartPoints[11][1] };
 const launchDay = make(
 	resultsCam,
-	'box chip-note',
-	{ x: 1150, y: 452 },
-	`<span class="accent">${icon('sparkles', 20)}</span>Launch day`
+	'box chart-tooltip',
+	{ x: spike.x - 280, y: spike.y - 20, w: 232 },
+	`<span class="row" style="gap:8px">${icon('sparkles', 20)}Launch day</span><b>3,400 views</b><span class="muted">October 13 · Sample data</span>`
 );
+cue(T.results + 0.2, 'tick');
+cue(T.results + 0.65, 'tick');
+cue(T.results + 1.15, 'tick');
 cue(T.results + 1.55, 'pop');
+cue(T.results + 1.65, 'ding');
 
 const inboxLayer = layer();
 const inboxTitle = title(inboxLayer, 'Reply in one place.', ['one', 'place.']);
@@ -1238,9 +1360,12 @@ function resultsScene(t) {
 			o: 1 - prog(t, T.results + 1.4, T.results + 1.9)
 		});
 	});
-	anim(chartMask, { x: prog(t, T.results + 0.3, T.results + 1.5, ease.inOut) * chart.w });
+	chartBars.forEach((column, i) => {
+		const rise = prog(t, T.results + 0.3 + i * 0.055, T.results + 0.75 + i * 0.055, ease.expoOut);
+		anim(column, { sx: 1, sy: rise, o: rise });
+	});
 	const tag = prog(t, T.results + 1.55, T.results + 1.95, ease.back);
-	anim(launchDay, { s: tag * 1.15, o: tag });
+	anim(launchDay, { s: lerp(0.94, 1, tag), y: (1 - tag) * 12, o: tag });
 }
 
 function inboxScene(t) {
@@ -1338,16 +1463,21 @@ function featureScene(t) {
 const endLayer = layer();
 const endMark = convergeMark(endLayer, 300);
 const endWord = wordmark(endLayer, 'OpenPost');
-const endTagline = make(endLayer, 'box closing', { y: 640 }, 'Your socials, on steroids.');
+const endTagline = make(endLayer, 'box closing', { y: 570 }, 'Your socials, on steroids.');
 endTagline.style.cssText += ';font-size:50px;font-weight:600;letter-spacing:-0.025em';
 const endUrl = make(
 	endLayer,
 	'box closing',
-	{ y: 770 },
+	{ y: 664 },
 	'<b style="color:var(--mark)">openpo.st</b> <span class="muted">· Open source. Hosted or self-hosted.</span>'
 );
 endUrl.style.fontSize = '32px';
-cue(T.end, 'impact');
+for (let i = 0; i < 4; i++) cue(T.end - 0.32 + i * 0.08, 'pop');
+cue(T.end, 'land');
+cue(T.end + 0.75, 'whoosh');
+cue(T.end + 1.4, 'pop');
+cue(T.end + 2.0, 'tick');
+cue(T.end, 'impact', { gain_db: 2 });
 cue(T.end + 0.02, 'shimmer');
 
 function endScene(t) {
