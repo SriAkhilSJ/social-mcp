@@ -3910,6 +3910,7 @@
 	"messages_conversation_unavailable": "Эта переписка больше недоступна в рабочем пространстве.",
 	"messages_window_closed": "Соцсеть больше не разрешает отвечать в этом чате. Его по-прежнему можно читать.",
 	"messages_window_until": "Период для ответа заканчивается {date}",
+	"messages_no_content": "Для этого сообщения нет текста или вложений.",
 	"messages_unread_count": "Непрочитанных: {count}",
 	"messages_archive": "Архивировать переписку",
 	"messages_restore": "Восстановить переписку",

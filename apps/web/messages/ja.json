@@ -3897,6 +3897,7 @@
 	"messages_conversation_unavailable": "この会話はこのワークスペースでは利用できなくなりました。",
 	"messages_window_closed": "ソーシャルネットワークの制限により、このチャットには返信できません。閲覧は引き続き可能です。",
 	"messages_window_until": "返信期限 {date}",
+	"messages_no_content": "このメッセージにはテキストも添付ファイルもありません。",
 	"messages_unread_count": "未読 {count}件",
 	"messages_archive": "会話をアーカイブ",
 	"messages_restore": "会話を復元",

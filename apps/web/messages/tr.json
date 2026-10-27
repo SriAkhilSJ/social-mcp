@@ -3897,6 +3897,7 @@
 	"messages_conversation_unavailable": "Bu sohbet bu çalışma alanında artık yok.",
 	"messages_window_closed": "Sosyal ağ bu sohbete yanıt vermeye artık izin vermiyor. Yine de okuyabilirsin.",
 	"messages_window_until": "Yanıt süresi {date} tarihinde bitiyor",
+	"messages_no_content": "Bu mesaj için metin veya ek bulunmuyor.",
 	"messages_unread_count": "{count} okunmadı",
 	"messages_archive": "Sohbeti arşivle",
 	"messages_restore": "Sohbeti geri yükle",

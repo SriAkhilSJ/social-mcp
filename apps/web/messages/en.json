@@ -3940,6 +3940,7 @@
 	"messages_conversation_unavailable": "This conversation is no longer available in this workspace.",
 	"messages_window_closed": "The social network no longer allows replies to this chat. You can still read it.",
 	"messages_window_until": "Reply window ends {date}",
+	"messages_no_content": "No text or attachments are available for this message.",
 	"messages_unread_count": "{count} unread",
 	"messages_archive": "Archive conversation",
 	"messages_restore": "Restore conversation",

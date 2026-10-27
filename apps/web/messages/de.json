@@ -3892,6 +3892,7 @@
 	"messages_conversation_unavailable": "Diese Unterhaltung ist in diesem Workspace nicht mehr verfügbar.",
 	"messages_window_closed": "Das soziale Netzwerk erlaubt keine Antworten mehr auf diesen Chat. Du kannst ihn weiter lesen.",
 	"messages_window_until": "Antwort­fenster endet am {date}",
+	"messages_no_content": "Für diese Nachricht sind weder Text noch Anhänge verfügbar.",
 	"messages_unread_count": "{count} ungelesen",
 	"messages_archive": "Unterhaltung archivieren",
 	"messages_restore": "Unterhaltung wieder­herstellen",

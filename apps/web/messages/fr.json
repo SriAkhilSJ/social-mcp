@@ -3897,6 +3897,7 @@
 	"messages_conversation_unavailable": "Cette conversation n’est plus disponible dans cet espace de travail.",
 	"messages_window_closed": "Le réseau social n’autorise plus les réponses à cette discussion. Vous pouvez toujours la lire.",
 	"messages_window_until": "Fenêtre de réponse jusqu’au {date}",
+	"messages_no_content": "Aucun texte ni pièce jointe n’est disponible pour ce message.",
 	"messages_unread_count": "{count} non lus",
 	"messages_archive": "Archiver la conversation",
 	"messages_restore": "Restaurer la conversation",

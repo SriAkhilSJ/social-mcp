@@ -3897,6 +3897,7 @@
 	"messages_conversation_unavailable": "Esta conversación ya no está disponible en este espacio de trabajo.",
 	"messages_window_closed": "La red social ya no permite responder a este chat. Aún puedes leerlo.",
 	"messages_window_until": "La ventana de respuesta termina el {date}",
+	"messages_no_content": "No hay texto ni adjuntos disponibles para este mensaje.",
 	"messages_unread_count": "{count} sin leer",
 	"messages_archive": "Archivar conversación",
 	"messages_restore": "Restaurar conversación",

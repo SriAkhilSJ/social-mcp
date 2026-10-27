@@ -3897,6 +3897,7 @@
 	"messages_conversation_unavailable": "이 대화는 이 워크스페이스에서 더 이상 사용할 수 없습니다.",
 	"messages_window_closed": "소셜 네트워크가 이 채팅의 답글을 더 이상 허용하지 않습니다. 계속 읽을 수는 있습니다.",
 	"messages_window_until": "답글 기한: {date}",
+	"messages_no_content": "이 메시지에는 텍스트나 첨부 파일이 없습니다.",
 	"messages_unread_count": "읽지 않음 {count}개",
 	"messages_archive": "대화 보관",
 	"messages_restore": "대화 복원",

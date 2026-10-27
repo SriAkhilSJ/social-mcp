@@ -3933,6 +3933,7 @@
 	"messages_conversation_unavailable": "Questa conversazione non è più disponibile in quest'area di lavoro.",
 	"messages_window_closed": "Il social network non consente più risposte a questa chat. Puoi ancora leggerlo.",
 	"messages_window_until": "La finestra di risposta termina con {date}",
+	"messages_no_content": "Non sono disponibili testo o allegati per questo messaggio.",
 	"messages_unread_count": "{count} non letto",
 	"messages_archive": "Archivia conversazione",
 	"messages_restore": "Ripristina la conversazione",

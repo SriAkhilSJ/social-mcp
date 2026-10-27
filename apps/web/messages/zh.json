@@ -3897,6 +3897,7 @@
 	"messages_conversation_unavailable": "此会话在此工作区已不可用。",
 	"messages_window_closed": "社交平台不再允许回复此聊天，仍可阅读。",
 	"messages_window_until": "回复窗口止于 {date}",
+	"messages_no_content": "这条消息没有可显示的文本或附件。",
 	"messages_unread_count": "{count} 条未读",
 	"messages_archive": "归档会话",
 	"messages_restore": "恢复会话",
