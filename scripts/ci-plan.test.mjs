@@ -110,6 +110,24 @@ test("changed files route to their CI paths", () => {
       on: ["npm"],
       off: [],
     },
+    {
+      name: "changelog entries do not force the complete matrix",
+      files: ["changes/476.md"],
+      on: [],
+      off: [
+        "application",
+        "backend",
+        "frontend",
+        "marketing",
+        "documentation",
+        "cli",
+        "n8n",
+        "npm",
+        "security",
+        "image",
+        "android",
+      ],
+    },
   ];
   for (const { name, files, on, off } of cases) {
     const plan = planCI(files, manifest);

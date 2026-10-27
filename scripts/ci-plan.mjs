@@ -48,7 +48,10 @@ export function planCI(files, manifest, { full = false, release = false, reuse =
 
 function planFiltered(files, manifest, { full = false } = {}) {
   const touched = new Set(files.flatMap((file) => classifyReleasePath(file, manifest).surfaces));
-  const delivery = full || touched.has("delivery");
+  // A changelog entry is required on every PR. It must not force the complete
+  // test matrix; the policy job still validates the entry on every PR.
+  const deliveryPaths = files.filter((file) => !file.startsWith("changes/"));
+  const delivery = full || (touched.has("delivery") && deliveryPaths.length > 0);
   const sharedAssets = manifest.surfaces["shared-assets"].prefixes;
   const matches = (prefixes, paths = []) =>
     full ||
