@@ -116,3 +116,39 @@ func TestFacebookListCommentsCollectsNestedReplies(t *testing.T) {
 	require.True(t, byID["post-1_c2"].IsOurs)
 	require.False(t, byID["post-1_c3"].IsOurs)
 }
+
+// A comment can carry its own attachment. Graph returns an image under
+// attachment.media.image and the photo page under attachment.url, so the
+// reader must request the field and keep the media.
+func TestFacebookListCommentsKeepsCommentAttachments(t *testing.T) {
+	originalClient := httpClient
+	defer func() { httpClient = originalClient }()
+
+	httpClient = &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		require.Contains(t, strings.Split(req.URL.Query().Get("fields"), ","), "attachment")
+		return jsonResponse(req, `{"data":[{"id":"comment-1","message":"","created_time":"2026-09-14T10:00:00+0000","from":{"id":"fan","name":"Fan"},"attachment":{"type":"photo","title":"Launch photo","url":"https://www.facebook.com/photo.php?fbid=1","target":{"url":"https://www.facebook.com/photo.php?fbid=1"},"media":{"image":{"src":"https://cdn.example/photo.jpg","width":600,"height":400}}}}]}`), nil
+	})}
+
+	comments, err := NewFacebookAdapter("", "", "").ListComments(context.Background(), "page-token", "page-1", "page-1_post-1")
+
+	require.NoError(t, err)
+	require.Len(t, comments, 1)
+	require.Equal(t, []CommentAttachment{{
+		Type: "image", URL: "https://www.facebook.com/photo.php?fbid=1", Name: "Launch photo", Thumbnail: "https://cdn.example/photo.jpg",
+	}}, comments[0].Attachments)
+}
+
+// A link attachment has no image. Its own URL is the stable target.
+func TestFacebookListCommentsKeepsLinkAttachments(t *testing.T) {
+	originalClient := httpClient
+	defer func() { httpClient = originalClient }()
+
+	httpClient = &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		return jsonResponse(req, `{"data":[{"id":"comment-1","message":"Read this","created_time":"2026-09-14T10:00:00+0000","from":{"id":"fan","name":"Fan"},"attachment":{"type":"share","url":"https://example.com/article"}}]}`), nil
+	})}
+
+	comments, err := NewFacebookAdapter("", "", "").ListComments(context.Background(), "page-token", "page-1", "page-1_post-1")
+
+	require.NoError(t, err)
+	require.Equal(t, []CommentAttachment{{Type: "link", URL: "https://example.com/article"}}, comments[0].Attachments)
+}
