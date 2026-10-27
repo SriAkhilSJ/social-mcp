@@ -69,6 +69,33 @@ test("checks finish translation readers before policy builds regenerate translat
   assert.ok(stages["repository policy"].phase > stages["frontend and marketing types"].phase);
 });
 
+test("the policy aggregate leaves production public builds to the public routes gate", () => {
+  const policy = publicPlan(resolvePlan("check", "policy", new Set(["--policy-only"])));
+  assert.equal(
+    policy.stages.some((stage) => stage.label === "public routes"),
+    false,
+    "the CI policy job must not rebuild both public sites",
+  );
+  const publicRoutes = (taskPlan) =>
+    taskPlan.stages.filter((stage) => stage.label === "public routes");
+  const full = publicPlan(resolvePlan("check"));
+  assert.equal(publicRoutes(full).length, 1, "the full check keeps the artifact proof");
+  assert.deepEqual(publicRoutes(full)[0].commands, [
+    "bunx turbo run _test:public-build",
+    "bun scripts/check-marketing-route-manifest.mjs",
+  ]);
+  assert.equal(
+    full.stages.toSorted((left, right) => left.phase - right.phase).at(-1).label,
+    "public routes",
+    "the artifact proof must finish after policy work",
+  );
+  const explicit = publicRoutes(publicPlan(resolvePlan("check", "public-routes")));
+  assert.ok(
+    explicit[0].commands.includes("bun test ./scripts/public-deployment-proof.test.mjs"),
+    "the explicit selector keeps its focused regression tests",
+  );
+});
+
 test("combined frontend and marketing checks compile translations once before both readers", () => {
   const plannedCheck = (scope) =>
     spawnSync("bun", ["scripts/tasks.mjs", "check", scope, "--plan"], {

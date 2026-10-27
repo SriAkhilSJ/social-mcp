@@ -137,6 +137,45 @@ jobs:
       - if: always()
         run: bash scripts/ci-timing-summary.sh finish policy
 
+  public-build:
+    name: Public artifact contract
+    needs: plan
+    if: needs.plan.outputs.mode != 'reuse'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: |
+            /*
+            !/apps/web/static/image-editor-models/
+          sparse-checkout-cone-mode: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24.19.0"
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: apps/server/go.mod
+          cache-dependency-path: |
+            apps/server/go.sum
+            apps/cli/go.sum
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: bun-${{ runner.os }}-
+      - run: bash scripts/ci-timing-summary.sh start public-build
+      - run: bun install --frozen-lockfile
+      # Both production sites are built for this proof only, so it stays out of
+      # the policy aggregate instead of rebuilding them alongside policy checks.
+      - name: Prove both production artifacts and their agent surfaces
+        run: bun run check -- public-routes
+      - if: always()
+        run: bash scripts/ci-timing-summary.sh finish public-build
+
   backend-lint:
     name: Backend and CLI lint
     needs: plan
@@ -1260,6 +1299,7 @@ jobs:
       [
         plan,
         policy,
+        public-build,
         backend-lint,
         frontend-quality,
         backend,

@@ -223,9 +223,12 @@ const checks = {
   ]),
 };
 
+// Public routes build both production sites twice, so they stay out of the
+// policy aggregate. CI proves them in a dedicated job; local `check` still
+// runs them as their own phase.
 const policyGroups = [
   ["build-graph", "assets", "workflows", "mcp-registry", "docs", "release-version", "secret-scan"],
-  ["app-routes", "public-routes", "legal-policy", "provider-certification", "provider-facts"],
+  ["app-routes", "legal-policy", "provider-certification", "provider-facts"],
   [
     "plan-catalog",
     "changelog",
@@ -598,8 +601,11 @@ function checkPlan(requestedScope, requestedOptions) {
     [contracts],
     [translations],
     [frontendAndMarketing, backend, cli],
-    // Policy checks build public artifacts and rewrite Paraglide output.
+    // Policy checks rewrite Paraglide output, so they run after its readers.
     [policy],
+    // The production-artifact proof rebuilds both public sites, so it runs
+    // after policy work instead of inside the policy aggregate.
+    [withoutRepositoryTests(checks["public-routes"])],
   ]);
 }
 

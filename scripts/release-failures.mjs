@@ -12,6 +12,7 @@ const devenv = (command) => `devenv shell -- bash -c ${JSON.stringify(command)}`
 // scripts/release-failures.test.mjs keeps this table in step with ci.yml.
 const jobCommands = [
   [/^Contracts and policy$/u, () => "bun run format:check && bun run check -- policy"],
+  [/^Public artifact contract$/u, () => "bun run check -- public-routes"],
   [/^Backend and CLI lint$/u, () => "bun run lint -- backend && bun run lint -- cli"],
   [
     /^Svelte lint and checks$/u,
