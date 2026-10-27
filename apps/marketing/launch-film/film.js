@@ -32,7 +32,8 @@ const T = {
 	publish: bar(16),
 	results: bar(18),
 	inbox: bar(20),
-	features: bar(21),
+	featFast: bar(21),
+	features: bar(22),
 	end: bar(23)
 };
 
@@ -280,7 +281,7 @@ function convergeMark(parent, size) {
 	return { holder, parts, flare, sparks, size };
 }
 // Modules arrive from the four corners, lock with a quarter turn, and the centre flares.
-function drawMark(mark, t, hit, { cx, cy, scale = 1, spread = 520 }) {
+function drawMark(mark, t, hit, { cx, cy, scale = 1, spread = 520, blur = 0 }) {
 	const arrive = prog(t, hit - 0.55, hit, ease.expoIn);
 	const settle = prog(t, hit, hit + 0.55, ease.spring);
 	mark.parts.forEach((part, i) => {
@@ -301,7 +302,8 @@ function drawMark(mark, t, hit, { cx, cy, scale = 1, spread = 520 }) {
 		y: cy - mark.size / 2,
 		r: turn,
 		s: scale * pop,
-		o: prog(t, hit - 0.55, hit - 0.45)
+		o: prog(t, hit - 0.55, hit - 0.45),
+		blur
 	});
 	const flash = t >= hit ? Math.exp(-(t - hit) * 5) : 0;
 	anim(mark.flare, { s: 1 + (1 - flash) * 5, o: flash * 0.9, r: 45 });
@@ -358,24 +360,28 @@ const cursor = make(
 );
 cursor.style.zIndex = '40';
 // Cursor keyframes: [time, x, y, scale]; clicks press it for a moment.
+const clicks = [T.editor + 1.2, T.editor + 2.7, T.editor + 3.15, T.schedule + 0.6, T.inbox + 1.5];
 const cursorPath = [
-	[T.editor + 0.9, 1500, 1060, 1],
-	[T.editor + 1.35, 860, 470, 1],
-	[T.editor + 1.8, 980, 510, 1],
-	[T.editor + 2.4, 1074, 995, 1],
-	[T.editor + 3.4, 1220, 1100, 1],
+	// Image editor: select the headline, drag its corner out, recolour, add to the post.
+	[T.editor + 0.7, 380, 980, 1],
+	[T.editor + 1.15, 570, 650, 1],
+	[T.editor + 1.65, 943, 800, 1],
+	[T.editor + 2.15, 990, 816, 1],
+	[T.editor + 2.65, 820, 1000, 1],
+	[T.editor + 3.1, 1666, 284, 1],
+	// Schedule: onto the Schedule button of the close-up.
 	[T.schedule + 0.02, 1680, 1000, 2.4],
-	[T.schedule + 0.55, 1362, 575, 2.4],
-	[T.schedule + 1.0, 1390, 640, 2.4],
+	[T.schedule + 0.55, 1450, 530, 2.4],
+	[T.schedule + 1.0, 1480, 560, 2.4],
+	// Inbox: type the reply, then hit Reply.
 	[T.inbox + 0.9, 1560, 1080, 1],
 	[T.inbox + 1.45, 1418, 916, 1],
 	[T.inbox + 2.1, 1480, 1090, 1]
 ];
-const clicks = [T.editor + 1.4, T.editor + 2.45, T.schedule + 0.6, T.inbox + 1.5];
 for (const at of clicks) cue(at, 'click');
 function drawCursor(t) {
 	const windows = [
-		[T.editor + 0.9, T.editor + 3.4],
+		[T.editor + 0.7, T.editor + 3.5],
 		[T.schedule + 0.02, T.schedule + 1.0],
 		[T.inbox + 0.9, T.inbox + 2.1]
 	];
@@ -579,13 +585,20 @@ function revealScene(t) {
 		prog(t, T.logo + 0.45, T.logo + 1.05, ease.expoInOut) *
 		(1 - prog(t, T.dive - 0.6, T.dive - 0.05, ease.expoInOut));
 	const total = 190 + 40 + revealWord.node.offsetWidth;
-	const dive = prog(t, T.dive, T.workflow - 0.1, ease.expoIn);
+	// The dive never stops moving: a steady push from the moment the tagline settles,
+	// charging into an exponential burst so the swoosh peaks on the last frames.
+	const diveAt = T.logo + 2.1;
+	const dive = clamp(
+		0.24 * prog(t, diveAt, T.workflow - 0.1, ease.linear) +
+			0.76 * prog(t, T.workflow - 1.05, T.workflow - 0.1, ease.expoIn)
+	);
 	drawMark(revealMark, t, T.logo, {
 		cx: lerp(960, 960 - total / 2 + 95, slide),
 		cy: 470,
-		scale: lerp(1, 190 / 300, slide) * lerp(1, 60, dive)
+		scale: lerp(1, 190 / 300, slide) * lerp(1, 60, dive),
+		blur: dive > 0.15 ? Math.min(9, (dive - 0.15) * 26) : 0
 	});
-	const wordOut = 1 - prog(t, T.dive - 0.6, T.dive - 0.25);
+	const wordOut = 1 - prog(t, diveAt + 0.3, diveAt + 0.75);
 	anim(revealWord.node, { x: 960 - total / 2 + 230, y: 470 - 82, o: slide > 0.02 ? wordOut : 0 });
 	revealWord.draw(t, T.logo + 0.7);
 	const line = prog(t, T.logo + 1.25, T.logo + 1.85, ease.expoOut) * wordOut;
@@ -658,7 +671,7 @@ const flowKeys = [
 	[0.55, 400, 410, 1.13],
 	[1.25, 865, 410, 1.08],
 	[2.1, 1385, 250, 1.06],
-	[2.65, 1355, 430, 0.7],
+	// No pull-back after Build draft: the camera glides on to Review post at the same depth.
 	[3.5, 1895, 171, 1.13]
 ];
 function flowCamera(t) {
@@ -750,10 +763,11 @@ const draftText = make(composerCam, 'box', {
 draftText.style.cssText += ';font-size:50px;line-height:1.38;letter-spacing:-0.02em';
 const drafted = make(
 	composerCam,
-	'box chip-note',
-	{ x: composer.x + 52, y: composer.y + 410 },
-	`<span class="accent">${icon('workflow', 22)}</span>Drafted by Workflows from ${script.tag}`
+	'box row muted',
+	{ x: composer.x + 52, y: composer.y + 415 },
+	`<span style="color:var(--mark)">${icon('workflow', 20)}</span>Drafted by Workflows · ${script.tag}`
 );
+drafted.style.cssText += ';gap:10px;font-size:21px';
 const composerTools = make(composerCam, 'box row', {
 	x: composer.x + 48,
 	y: composer.y + composer.h - 96,
@@ -772,12 +786,16 @@ toolsRight.style.gap = '22px';
 const composerCount = make(toolsRight, 'counter');
 make(toolsRight, 'button ordinary', {}, `${icon('sparkles', 22)} Ideate`);
 make(toolsRight, 'button focal', {}, `${icon('calendar', 22)} Schedule`);
-// The Review post node opens into the composer.
-const flowMorph = make(composerLayer, 'box');
-flowMorph.style.cssText +=
-	';background:var(--surface);border:1px solid var(--line);border-radius:22px';
-const streamStart = T.composer + 0.35;
-const streamEnd = T.composer + 1.6;
+// The Review post node opens into the composer: a live replica of the node carries its
+// content across while the sheet unfolds around it, so nothing pops from white nothing.
+const flowMorph = make(composerLayer, 'box flow-node flow', {});
+flowMorph.innerHTML = `<span class="flow-port input"></span><span class="flow-port output"></span><div class="morph-body"><div class="row" style="gap:20px"><span class="flow-icon">${icon('check', 34)}</span><div><b>Review post</b><p>Ready for your approval</p></div></div><div class="flow-state">${icon('clock', 15)}<span>Awaiting review</span></div></div>`;
+flowMorph.style.boxShadow = '0 24px 70px rgb(43 38 33 / 18%)';
+const morphBody = flowMorph.querySelector('.morph-body');
+morphBody.style.transformOrigin = '0 0';
+const morphPorts = flowMorph.querySelectorAll('.flow-port');
+const streamStart = T.composer + 0.5;
+const streamEnd = T.composer + 1.7;
 accountTabs.forEach((_, i) => cue(T.composer + 1.75 + i * 0.13, 'tick'));
 
 function composerScene(t) {
@@ -792,10 +810,17 @@ function composerScene(t) {
 		width: `${lerp(from.w, composer.w, morph)}px`,
 		height: `${lerp(from.h, composer.h, morph)}px`
 	});
-	anim(flowMorph, { o: t < T.composer + 0.1 ? 1 : 0 });
+	flowMorph.style.borderColor = morph < 0.5 ? 'var(--mark)' : 'var(--border)';
+	// The node's content holds still while the sheet unfolds, then dissolves into the composer.
+	const bodyScale = lerp(1.13, 1, morph);
+	const dissolve = prog(t, T.composer - 0.28, T.composer + 0.02);
+	anim(morphBody, { s: bodyScale, o: 1 - dissolve, blur: dissolve * 6 });
+	for (const port of morphPorts)
+		anim(port, { o: 1 - prog(t, T.composer - 0.55, T.composer - 0.3) });
+	anim(flowMorph, { o: 1 - prog(t, T.composer + 0.12, T.composer + 0.5) });
 	const burst = prog(t, T.networks - 0.05, T.networks + 0.2, ease.in);
-	const inside = prog(t, T.composer, T.composer + 0.35) * (1 - burst);
-	anim(composerCard, { o: t >= T.composer + 0.1 ? 1 - burst : 0, s: 1 - burst * 0.25 });
+	const inside = prog(t, T.composer + 0.1, T.composer + 0.55) * (1 - burst);
+	anim(composerCard, { o: t >= T.composer + 0.1 ? inside : 0, s: 1 - burst * 0.25 });
 	for (const node of [tabs, divider, composerTools]) anim(node, { o: inside, s: 1 - burst * 0.25 });
 	accountTabs.forEach((tab, i) => {
 		const at = T.composer + 1.75 + i * 0.13;
@@ -808,8 +833,8 @@ function composerScene(t) {
 	draftText.textContent = text;
 	anim(draftText, { o: inside, s: 1 - burst * 0.25 });
 	composerCount.innerHTML = `${icon('circle-check', 20)} ${text.length} / 280`;
-	const badge = prog(t, streamEnd, streamEnd + 0.4, ease.back);
-	anim(drafted, { s: badge, o: badge * inside });
+	const badge = prog(t, streamEnd, streamEnd + 0.4);
+	anim(drafted, { y: (1 - badge) * 12, o: badge * inside, blur: (1 - badge) * 4 });
 }
 
 // --- 5. Every network, its own version -----------------------------------------------------
@@ -869,8 +894,14 @@ const shortNote = make(
 	xCard.holder,
 	'box chip-note',
 	{ x: 190, y: -96 },
-	`<span class="accent">${icon('sparkles', 20)}</span>Shortened for X`
+	`<span class="accent">${icon('sparkles', 20)}</span>Perfected for X`
 );
+shortNote.style.fontSize = '21px';
+// The short copy lives on a crossfade twin aligned to the live text (offsets are
+// transform-independent), so the swap reads as a motion-designed change.
+const xShortText = make(xCard.holder, 'social-copy');
+xShortText.style.cssText += ';position:absolute;margin:0;opacity:0';
+let xShortAligned = false;
 networkCards.forEach((card) => cue(T.networks + 0.1 + Math.abs(card.i - 2) * 0.09, 'pop'));
 cue(T.shorten, 'tick');
 cue(T.shorten + 0.15, 'pop');
@@ -883,13 +914,27 @@ function cardsScene(t) {
 	if (!show(cardsLayer, between(t, T.networks - 0.05, T.editor + 0.1))) return;
 	cardsTitle(t, T.networks + 0.2, T.editor - 0.6);
 	const spin = lerp(12, 0, prog(t, T.networks, T.editor - 0.5, ease.inOut));
+	// Punch in on the X card's text while it shortens, then settle before the zoom-through.
+	const punch =
+		prog(t, T.shorten - 0.2, T.shorten + 0.55, ease.expoInOut) *
+		(1 - prog(t, T.editor - 0.95, T.editor - 0.62, ease.expoInOut));
+	ring.style.transformOrigin = '960px 600px';
+	anim(ring, { s: 1 + punch * 0.95 });
 	// Zoom through the X card's image: it grows until it is the editor canvas.
 	const zoom = prog(t, T.editor - 0.5, T.editor, ease.expoInOut);
 	const canvasCentre = { x: canvas.x + 600 * canvas.scale, y: canvas.y + 314 * canvas.scale };
+	if (t >= T.shorten - 0.6 && !xShortAligned) {
+		xShortAligned = true;
+		xShortText.style.left = `${xCard.postText.offsetLeft}px`;
+		xShortText.style.top = `${xCard.postText.offsetTop}px`;
+		xShortText.style.width = `${xCard.postText.clientWidth}px`;
+	}
 	networkCards.forEach((card) => {
 		const delay = Math.abs(card.i - 2) * 0.09;
 		const fly = prog(t, T.networks + delay, T.networks + delay + 0.7, ease.back);
-		const angle = (card.i - 2) * 20 + spin * (card.i === 2 ? 0 : 1);
+		// 32 degrees keeps neighbours clear of each other: no clipped text, colliding
+		// count pills or badges floating over the next card, and the outer two stay in frame.
+		const angle = (card.i - 2) * 38 + spin * (card.i === 2 ? 0 : 1);
 		const radians = (angle * Math.PI) / 180;
 		const radius = 1150;
 		const isX = card.i === 2;
@@ -912,11 +957,21 @@ function cardsScene(t) {
 			o: prog(t, T.networks + delay + 0.4, T.networks + delay + 0.7) * (1 - zoom)
 		});
 	});
-	xCard.postText.textContent = t >= T.shorten + 0.15 ? script.short : script.draft;
-	anim(xCard.postText, {
-		y: t >= T.shorten ? -4 * Math.sin(prog(t, T.shorten, T.shorten + 0.35) * Math.PI) : 0
-	});
+	// The copy swaps as a crossfade: the long text lifts out while the short one rises in.
+	const swapOut = prog(t, T.shorten, T.shorten + 0.28, ease.in);
+	const swapIn = prog(t, T.shorten + 0.06, T.shorten + 0.34);
+	xCard.postText.textContent = script.draft;
+	xShortText.textContent = script.short;
+	anim(xCard.postText, { o: 1 - swapOut, y: swapOut * -12, blur: swapOut * 5 });
+	anim(xShortText, { o: swapIn, y: (1 - swapIn) * 12, blur: (1 - swapIn) * 5 });
 	xCard.note.textContent = `${t >= T.shorten + 0.15 ? [...script.short].length : [...script.draft].length} / 280`;
+	// The count hides while the punch pushes it into the title band, then pops back settled.
+	const punchHide =
+		prog(t, T.shorten - 0.2, T.shorten + 0.3) * (1 - prog(t, T.editor - 0.8, T.editor - 0.5));
+	anim(xCard.note, {
+		o: prog(t, T.networks + 0.4, T.networks + 0.7) * (1 - punchHide) * (1 - zoom),
+		s: (1 - punchHide) * (1 + 0.2 * Math.sin(clamp((t - T.shorten - 0.15) / 0.4) * Math.PI))
+	});
 	const noteIn = prog(t, T.shorten + 0.1, T.shorten + 0.5, ease.back);
 	anim(shortNote, { s: noteIn, o: noteIn * (1 - zoom) });
 }
@@ -933,7 +988,7 @@ const editorBar = make(
 	`<span class="row" style="gap:12px;font-size:23px;font-weight:600">${icon('image', 26)}${script.product} 2.0 launch</span>`
 );
 editorBar.style.justifyContent = 'space-between';
-make(editorBar, 'button focal', {}, `${icon('send', 20)} Add to post`);
+const addPostButton = make(editorBar, 'button focal', {}, `${icon('send', 20)} Add to post`);
 const rail = make(
 	editorCam,
 	'box',
@@ -977,6 +1032,16 @@ const selection = make(
 );
 const layerAt = [0, 1, 2, 3].map((i) => T.editor + 0.45 + i * 0.12);
 layerAt.forEach((at) => cue(at, 'tick'));
+// Feedback for the recolour and the final Add to post press.
+const swatchRipple = make(editorCam, 'box', { x: 800, y: 980, w: 40, h: 40 });
+swatchRipple.style.cssText += ';border:3px solid var(--mark);border-radius:12px;opacity:0';
+const addedChip = make(
+	editorCam,
+	'box chip-note',
+	{ x: 1408, y: 336 },
+	`<span style="color:var(--green)">${icon('circle-check', 20)}</span>Added to the post`
+);
+cue(clicks[2] + 0.08, 'ding');
 
 // The video: the same image becomes the first shot on a timeline.
 const videoLayer = layer();
@@ -1051,15 +1116,20 @@ function editorScene(t) {
 		});
 		row.style.background = i === 0 && t >= clicks[0] ? 'var(--selection)' : 'transparent';
 	});
-	// Select the headline, drag it larger, then recolour it from the palette.
+	// Select the headline, drag its corner out, recolour it, then add the art to the post.
 	selection.style.display = t >= clicks[0] ? 'block' : 'none';
-	const grow = prog(t, clicks[0] + 0.05, clicks[0] + 0.55, ease.inOut);
-	anim(editorArt.headline, { s: 1 + grow * 0.08 });
-	selection.style.width = `${600 * (1 + grow * 0.08)}px`;
-	selection.style.height = `${290 * (1 + grow * 0.08)}px`;
+	const grow = prog(t, T.editor + 1.7, T.editor + 2.2, ease.inOut);
+	anim(editorArt.headline, { s: 1 + grow * 0.12 });
+	selection.style.width = `${600 * (1 + grow * 0.12)}px`;
+	selection.style.height = `${290 * (1 + grow * 0.12)}px`;
 	const recolour = t >= clicks[1] + 0.05;
 	editorArt.headline.style.color = recolour ? '#ffd27a' : '';
 	swatchNodes[1].style.borderColor = recolour ? 'var(--ink)' : '';
+	const ripple = prog(t, clicks[1] + 0.02, clicks[1] + 0.5);
+	anim(swatchRipple, { s: 1 + ripple * 1.6, o: ripple > 0 ? 0.9 * (1 - ripple) : 0 });
+	anim(addPostButton, { s: between(t, clicks[2] - 0.03, clicks[2] + 0.12) ? 0.94 : 1 });
+	const added = prog(t, clicks[2] + 0.05, clicks[2] + 0.45, ease.back);
+	anim(addedChip, { y: (1 - added) * 14, o: added });
 }
 
 function videoScene(t) {
@@ -1159,6 +1229,24 @@ const closeup = make(scheduleLayer, 'box row', { x: 560, y: 480, w: 800, h: 120 
 closeup.style.cssText += ';gap:18px;justify-content:center';
 make(closeup, 'button ordinary', {}, `${icon('clock', 22)} Today, 5:00 PM`);
 const scheduleButton = make(closeup, 'button focal', {}, `${icon('calendar', 22)} Schedule`);
+// Confetti when the post is scheduled, like the composer celebration in the app.
+const confettiAt = clicks[3] + 0.04;
+cue(confettiAt, 'shimmer');
+const confetti = Array.from({ length: 40 }, (_, i) => {
+	const node = make(scheduleLayer, 'box confetti');
+	const size = 14 + ((i * 7) % 4) * 6;
+	node.style.cssText += `;width:${size}px;height:${Math.round(size * 0.62)}px;background:${
+		['#cf793e', '#a48bc4', '#4b966b', '#3d8bfd', '#e9a066'][i % 5]
+	};opacity:0`;
+	return {
+		node,
+		angle: (i / 40) * Math.PI * 2 + (i % 3) * 0.19,
+		speed: 300 + ((i * 53) % 9) * 30,
+		flip: 200 + ((i * 29) % 7) * 90
+	};
+});
+// The Schedule button sits large in the close-up; the burst starts at its centre.
+const confettiOrigin = { x: 1469, y: 540 };
 const sample = make(stage, 'label', {}, 'Sample data');
 const states = (at, fails) => [
 	[at, 'Publishing', 'var(--amber)'],
@@ -1209,7 +1297,21 @@ function scheduleScene(t) {
 		s: lerp(3.2, 0.3, pull),
 		o: enter * (1 - prog(t, T.schedule + 0.9, T.schedule + 1.2))
 	});
-	anim(scheduleButton, { s: between(t, clicks[2] - 0.03, clicks[2] + 0.12) ? 0.94 : 1 });
+	anim(scheduleButton, { s: between(t, clicks[3] - 0.03, clicks[3] + 0.12) ? 0.94 : 1 });
+	// Confetti: a radial burst with drag and gravity, gone before the calendar settles.
+	const burst = clamp((t - confettiAt) / 1.6);
+	if (burst > 0 && burst < 1) {
+		for (const { node, angle, speed, flip } of confetti) {
+			const drag = 1 - 0.4 * burst;
+			anim(node, {
+				x: confettiOrigin.x + Math.cos(angle) * speed * burst * drag,
+				y: confettiOrigin.y + Math.sin(angle) * speed * burst * drag + 1500 * burst * burst,
+				r: flip * burst,
+				s: 1 - burst * 0.3,
+				o: 1 - ease.in(clamp((burst - 0.55) / 0.45))
+			});
+		}
+	} else for (const { node } of confetti) anim(node, { o: 0 });
 	// Camera: from the landing chip, out to the month, then in on the two outcomes.
 	const outcome = prog(t, T.publish - 0.5, T.publish + 0.2, ease.expoInOut);
 	const ours = centre(ourSlot);
@@ -1369,21 +1471,58 @@ function resultsScene(t) {
 }
 
 function inboxScene(t) {
-	if (!show(inboxLayer, between(t, T.inbox - 0.2, T.features + 0.3))) return;
-	inboxTitle(t, T.inbox + 0.1, T.features - 0.35);
+	if (!show(inboxLayer, between(t, T.inbox - 0.2, T.featFast + 0.3))) return;
+	inboxTitle(t, T.inbox + 0.1, T.featFast - 0.35);
 	const enter = prog(t, T.inbox - 0.1, T.inbox + 0.35, ease.expoOut);
-	const leave = prog(t, T.features - 0.15, T.features + 0.2, ease.expoIn);
+	const leave = prog(t, T.featFast - 0.15, T.featFast + 0.2, ease.expoIn);
 	anim(inboxLayer, { y: (1 - enter) * 1000, s: 1 - leave * 0.15, o: 1 - leave, blur: leave * 8 });
-	anim(inboxCam, dolly(t, T.inbox, T.features, 0.04));
+	anim(inboxCam, dolly(t, T.inbox, T.featFast, 0.04));
 	for (const { row, at } of messages) {
 		anim(row, { x: (1 - prog(t, at, at + 0.4, ease.expoOut)) * 140, o: prog(t, at, at + 0.1) });
 	}
-	if (t >= clicks[3] + 0.05) {
+	if (t >= clicks[4] + 0.05) {
 		replyText.innerHTML = `<span class="row" style="gap:10px;color:var(--green)">${icon('circle-check', 26)} Replied on Threads</span>`;
 	} else replyText.textContent = typed(t, T.inbox + 0.55, T.inbox + 1.25, script.reply);
 }
 
-// --- 9. Everything around it, then the four pieces again -------------------------------------
+// --- 9. The headliners pop fast, then everything scrolls by ----------------------------------
+const popLayer = layer();
+const popChips = [
+	['workflow', 'Workflows'],
+	['images', 'Media library'],
+	['lightbulb', 'AI ideas'],
+	['mic', 'Recorder'],
+	['repeat', 'Auto repost'],
+	['users-round', 'Teams']
+].map(([name, label], i) => {
+	// Each chip pops on its own full-width slot so the label stays centred.
+	const slotNode = make(popLayer, 'box row', { x: 0, y: 462, w: 1920, h: 150 });
+	slotNode.style.justifyContent = 'center';
+	const chip = make(slotNode, 'feature', {}, `${icon(name)}${label}`);
+	chip.style.fontSize = '40px';
+	const at = T.featFast + 0.35 + i * 0.31;
+	cue(at, 'pop');
+	return { slotNode, at, tilt: (((i * 37) % 9) - 4) * 0.8, dx: ((i * 53) % 5) - 2 };
+});
+cue(T.features, 'whoosh');
+
+function popScene(t) {
+	if (!show(popLayer, between(t, T.featFast - 0.05, T.features + 0.25))) return;
+	popChips.forEach(({ slotNode, at, tilt, dx }, i) => {
+		const pop = prog(t, at, at + 0.32, ease.spring);
+		const outAt = i < popChips.length - 1 ? popChips[i + 1].at : T.features - 0.05;
+		const gone = prog(t, outAt, outAt + 0.24, ease.in);
+		anim(slotNode, {
+			x: dx * 26,
+			y: (1 - pop) * 44 - gone * 30,
+			r: tilt * (1 - pop) + gone * tilt * 4,
+			s: pop * (1 - gone * 0.35),
+			o: pop * (1 - gone),
+			blur: gone * 14
+		});
+	});
+}
+
 const featureLayer = layer();
 const featureTitle = title(featureLayer, 'Everything your content needs.', ['Everything']);
 const featureCam = make(featureLayer, 'world');
@@ -1433,7 +1572,8 @@ function featureScene(t) {
 	featureTitle(t, T.features + 0.15, T.end - 1.4);
 	const gather = prog(t, T.end - 1.25, T.end - 0.15, ease.expoIn);
 	anim(featureCam, { rx: 16, r: -5, s: 1.05 + gather * 0.2 });
-	const scroll = (t - T.features) * 240 + gather * gather * 2400;
+	// A shorter window scrolls faster: the marquee reads as energy, not a list.
+	const scroll = (t - T.features) * 520 + gather * gather * 2400;
 	featureRows.forEach(({ row, direction }, i) => {
 		const width = row.scrollWidth / 2;
 		const offset = (((direction * scroll + i * 160) % width) + width) % width;
@@ -1505,7 +1645,7 @@ await document.fonts.load('800 136px Manrope');
 
 export async function seek(t) {
 	drawGlow(t);
-	sample.style.opacity = between(t, T.schedule + 1.3, T.features) ? '1' : '0';
+	sample.style.opacity = between(t, T.schedule + 1.3, T.featFast) ? '1' : '0';
 	hookScene(t);
 	revealScene(t);
 	flowScene(t);
@@ -1516,6 +1656,7 @@ export async function seek(t) {
 	scheduleScene(t);
 	resultsScene(t);
 	inboxScene(t);
+	popScene(t);
 	featureScene(t);
 	endScene(t);
 	drawCursor(t);
