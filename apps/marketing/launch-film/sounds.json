@@ -1,33 +1,33 @@
 {
 	"_doc": "Recordings for the launch film soundtrack. mix.py downloads each preview, checks its sha256, and trims it. Every licence was read on the sound's own page (licence_seen). The music is CC BY 4.0: publish its credit line with the film. Effects are CC0.",
 	"music": {
-		"id": 612264,
-		"title": "Mare Production - Corporate Tower.mp3",
-		"author": "mareproduction",
-		"page": "https://freesound.org/people/mareproduction/sounds/612264/",
-		"preview": "https://cdn.freesound.org/previews/612/612264_2829256-hq.mp3",
+		"id": 13264,
+		"title": "Sascha Ende - Mainstream Music 2025 Vol. 10.mp3",
+		"author": "Sascha Ende (ende.app)",
+		"page": "https://ende.app/en/song/13264-mainstream-music-2025-vol-10",
+		"preview": "https://ende.app/storage/mp3low/378676de-9ccb-4e8f-995e-599a8fe7ea73.mp3",
 		"licence": "CC BY 4.0",
-		"sha256": "9cf5ed463118b61011618c277ccd9a3e703497495e9fbe0042a162ddb615e7f7",
-		"licence_seen": "['creativecommons.org/licenses/by/4.0'] on https://freesound.org/people/mareproduction/sounds/612264/ (2026-10-27)",
-		"credit": "\"Corporate Tower\" by mareproduction (https://freesound.org/people/mareproduction/sounds/612264/), licensed under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/). Edited: cut and rearranged at bar lines.",
+		"sha256": "ba2d8a9174e117d3e33f769d35e74e1155a908167c6271b2e0100f033e40bcfc",
+		"licence_seen": "['ende.app/standard-license'] on https://ende.app/en/song/13264-mainstream-music-2025-vol-10 (2026-10-27)",
+		"credit": "\"Mainstream Music 2025 Vol. 10\" by Sascha Ende (https://ende.app/en/song/13264-mainstream-music-2025-vol-10), licensed under CC BY 4.0 (https://ende.app/en/standard-license). Edited: one cut into the drop at the logo and a faded tail.",
 		"edit": [
 			{
-				"label": "intro, drop and groove: source bars 0-21",
+				"label": "pickup and intro: source bars 0-3.5",
 				"from": 0.0,
-				"to": 48.8494,
+				"to": 8.3925,
 				"at": 0.0
 			},
 			{
-				"label": "breakdown and build into the logo: source bars 37-38",
-				"from": 84.4044,
-				"to": 88.8488,
-				"at": 48.8494
+				"label": "the drop, then the groove through the product: source bars 5-30.75",
+				"from": 11.205,
+				"to": 59.49,
+				"at": 8.3925
 			},
 			{
-				"label": "outro under the logo: source bar 55 onward",
-				"from": 124.4105,
-				"to": 133.3,
-				"at": 53.2938,
+				"label": "tail under the logo with fade: source bars 30.75-33",
+				"from": 59.49,
+				"to": 63.95,
+				"at": 56.67,
 				"fade_out": 1.4
 			}
 		]

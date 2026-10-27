@@ -1,15 +1,15 @@
 // OpenPost launch film. Every frame is a pure function of time: render.mjs calls
 // window.film.seek(t) and captures the stage. Sound cues come from the same timeline.
-// Scenes sit on the bar lines of the edited music track (see mix.py), 108 BPM.
+// Scenes sit on the bar lines of the edited music track (see mix.py), 128 BPM.
 import { ditherThreshold, gradientSvg } from '../../../packages/dither/dist/paint.js';
 
 export const FPS = 60;
-export const BPM = 108;
+export const BPM = 128;
 const BAR = 240 / BPM;
 const BEAT = BAR / 4;
-// The track's measured downbeats: bar(3) is the drop, bar(23) the logo.
-const bar = (k) => 2.1828 + k * BAR;
-export const DURATION = bar(25) + 0.006;
+// The track's measured downbeats: bar(3.5) is the logo, bar(29.25) the final logo card.
+const bar = (k) => 1.83 + k * BAR;
+export const DURATION = bar(31.25) + 0.006;
 
 const script = await (await fetch('./script.json')).json();
 const icons = (await (await fetch('/node_modules/@iconify-json/lucide/icons.json')).json()).icons;
@@ -19,22 +19,22 @@ const marks = (name) => `/assets/postiz-socials/${name}.svg`;
 const T = {
 	release: 0.25,
 	tell: bar(1),
-	freeze: 8.02,
-	logo: bar(3),
-	dive: bar(4) + 2 * BEAT,
-	workflow: bar(5),
-	composer: bar(7),
-	networks: bar(9),
-	shorten: bar(10),
-	editor: bar(11),
-	video: bar(12) + 3 * BEAT,
-	schedule: bar(14),
-	publish: bar(16),
-	results: bar(18),
-	inbox: bar(20),
-	featFast: bar(21),
-	features: bar(22),
-	end: bar(23)
+	freeze: bar(3.5) - 0.8,
+	logo: bar(3.5),
+	dive: bar(3.5) + 3 * BEAT,
+	workflow: bar(6),
+	composer: bar(8.5),
+	networks: bar(11),
+	shorten: bar(12.5),
+	editor: bar(13.5),
+	video: bar(15.5),
+	schedule: bar(17.5),
+	publish: bar(20),
+	results: bar(22.5),
+	inbox: bar(25),
+	featFast: bar(26.25),
+	features: bar(27.25),
+	end: bar(29.25)
 };
 
 // --- Motion helpers ---------------------------------------------------------------------------
@@ -1500,7 +1500,7 @@ const popChips = [
 	slotNode.style.justifyContent = 'center';
 	const chip = make(slotNode, 'feature', {}, `${icon(name)}${label}`);
 	chip.style.fontSize = '40px';
-	const at = T.featFast + 0.35 + i * 0.31;
+	const at = T.featFast + 0.3 + i * 0.24;
 	cue(at, 'pop');
 	return { slotNode, at, tilt: (((i * 37) % 9) - 4) * 0.8, dx: ((i * 53) % 5) - 2 };
 });

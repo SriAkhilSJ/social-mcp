@@ -1,6 +1,6 @@
 # OpenPost launch film
 
-A 58-second, 1920x1080, 60 fps launch film made in code. It follows one founder's release from GitHub to every
+A 60-second, 1920x1080, 60 fps launch film made in code. It follows one founder's release from GitHub to every
 network and back. The interface is rebuilt in code, close to the app's light Dither UI, with individually animated
 nodes, posts, network cards, calendar cells and chart columns. The soundtrack is a
 licensed music track and real CC0 recordings, chosen, trimmed, placed and checked with
@@ -24,20 +24,21 @@ write `cues.json`, so `mix.py` can run without a full picture render.
 ## The story
 
 One continuous move. Each scene hands an element to the next one, and every scene change sits on a bar line of the
-music (108 BPM).
+music (128 BPM).
 
 1. **The problem.** "You just shipped." A GitHub release for Lumen 2.0, a sample product, ticks through its changes.
    "Now tell everyone." The work piles up around it: ten tasks and sixteen networks, faster and faster.
 2. **The turn.** The music stops. Everything is pulled into four quadrants, which become the four modules of the
    Converge mark on the drop. OpenPost, and its promise.
-3. **The product.** The camera dives through the mark's centre into Workflows and its GitHub release trigger. The camera follows the run through a stable-release condition, up to Build draft, back out to reveal
-   the pre-release branch with Wait and Create draft, then into Review post. Review post opens into the composer,
-   where the draft streams in. The composer bursts into five rebuilt network previews; X gets its own shorter
-   version. The camera zooms through the X card's image into the image editor, the finished image becomes the first shot on a
-   video timeline, and a click on Schedule pulls back to the month. Publishing turns one post green and walks another
-   through Failed and Retrying to Published. Dithered chart columns climb to the launch-day spike, and a reply
-   goes out from one inbox.
-4. **The breadth.** Everything else OpenPost does scrolls past on a tilted plane and is pulled back into the mark.
+3. **The product.** The camera dives through the mark's centre into Workflows and its GitHub release trigger. The camera follows the run through a stable-release condition, up to Build draft, and glides on into Review post, which
+   opens into the composer, where the draft streams in. The composer bursts into five rebuilt network previews; X
+   gets its own perfected version, punched in so the swap reads at a glance. The camera zooms through the X card's image
+   into the image editor, the finished image becomes the first shot on a video timeline, scheduling fires the
+   composer's confetti, and a click on Schedule pulls back to the month. Publishing turns one post green and walks
+   another through Failed and Retrying to Published. Dithered chart columns climb to the launch-day spike, and a
+   reply goes out from one inbox.
+4. **The breadth.** The headliner features pop on the beat, everything else scrolls past on a tilted plane and is
+   pulled back into the mark.
 5. **The logo.** The four modules converge again, the music resolves, and the line lands: "Your socials, on
    steroids."
 
@@ -64,8 +65,9 @@ music (108 BPM).
 
 Publish this line with the film (the track's licence requires it):
 
-> Music: "Corporate Tower" by mareproduction (https://freesound.org/people/mareproduction/sounds/612264/), licensed
-> under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/). Edited: cut and rearranged at bar lines.
+> Music: "Mainstream Music 2025 Vol. 10" by Sascha Ende (https://ende.app/en/song/13264-mainstream-music-2025-vol-10),
+> licensed under CC BY 4.0 (https://ende.app/en/standard-license). Edited: one cut into the drop at the logo and a
+> faded tail.
 
 - Sound effects are CC0 recordings from Freesound, listed in `sounds.json`.
 - Lumen is a sample product. Accounts, analytics and replies are sample data, and the results scenes are labelled.
@@ -82,5 +84,6 @@ $E sheet tmp/launch-film/openpost-launch.mp4 -o tmp/launch-film/sheet.png --cues
 $E realness tmp/launch-film/music-stem.wav tmp/launch-film/effects-stem.wav
 ```
 
-To replace a sound, find candidates on Freesound, read the licence on the sound's own page (CC0 or CC BY only), rank
-them with `earshot rank`, trim with `earshot find`, and add the entry to `sounds.json` with its sha256.
+To replace a sound, find candidates on Freesound or ende.app (full CC BY 4.0 tracks), read the licence on the
+sound's own page (CC0 or CC BY only), rank them with `earshot rank`, trim with `earshot find`, measure the tempo
+grid with `earshot measure --music`, and add the entry to `sounds.json` with its sha256.

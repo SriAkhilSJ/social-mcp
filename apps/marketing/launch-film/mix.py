@@ -43,6 +43,8 @@ ROLES = {
 }
 MUSIC_GAIN_DB = -6.0
 STOP_DOWN_DB = -9.0
+# The bed track is bright through the 1-3 kHz honk band; earshot critique asks for a 2 dB cut there.
+MUSIC_MID_DIP_DB = -2.0
 
 
 def fetch(entry, cache):
@@ -140,7 +142,11 @@ def music_bed(entry, cache, total, sections):
     hit = sections["end"]
     automation = np.where((t >= hit - 0.42) & (t < hit), 10 ** (STOP_DOWN_DB / 20), 1.0)
     automation = np.convolve(automation, np.ones(480) / 480, mode="same")
-    return bed * automation[:, None] * 10 ** (MUSIC_GAIN_DB / 20)
+    # A wide peaking cut over the honk band tames the track's harsh mids.
+    sos = signal.iirfilter(2, [1000.0, 3000.0], btype="bandstop", fs=SR, output="sos")
+    shaped = signal.sosfilt(sos, bed, axis=0)
+    dip = 10 ** (MUSIC_MID_DIP_DB / 20)
+    return (shaped * (1 - dip) + bed * dip) * automation[:, None] * 10 ** (MUSIC_GAIN_DB / 20)
 
 
 def main(work):
