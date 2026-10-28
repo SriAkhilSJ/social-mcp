@@ -17,6 +17,9 @@ import {
   withTurboCacheLock,
 } from "./turbo-cache.mjs";
 
+// A hung step used to block a task for hours. Keep a bounded default.
+const DEFAULT_STEP_TIMEOUT_MS = 30 * 60_000;
+
 const root = path.resolve(import.meta.dir, "..");
 const [command, rawScope, ...flags] = process.argv.slice(2);
 const scope = rawScope?.startsWith("--") ? undefined : rawScope;
@@ -220,9 +223,12 @@ const checks = {
   ]),
 };
 
+// Public routes build both production sites twice, so they stay out of the
+// policy aggregate. CI proves them in a dedicated job; local `check` still
+// runs them as their own phase.
 const policyGroups = [
   ["build-graph", "assets", "workflows", "mcp-registry", "docs", "release-version", "secret-scan"],
-  ["app-routes", "public-routes", "legal-policy", "provider-certification", "provider-facts"],
+  ["app-routes", "legal-policy", "provider-certification", "provider-facts"],
   [
     "plan-catalog",
     "changelog",
@@ -595,8 +601,11 @@ function checkPlan(requestedScope, requestedOptions) {
     [contracts],
     [translations],
     [frontendAndMarketing, backend, cli],
-    // Policy checks build public artifacts and rewrite Paraglide output.
+    // Policy checks rewrite Paraglide output, so they run after its readers.
     [policy],
+    // The production-artifact proof rebuilds both public sites, so it runs
+    // after policy work instead of inside the policy aggregate.
+    [withoutRepositoryTests(checks["public-routes"])],
   ]);
 }
 
@@ -847,20 +856,39 @@ async function gitFiles(directory, pattern) {
     .filter((file) => file.endsWith(suffix) && existsSync(path.join(root, file)));
 }
 
+// Never attach stdin unless a step explicitly supplies input, so a missing
+// binary cannot sit on an install prompt.
 async function spawn(argv, step = {}, signal) {
   if (signal?.aborted) return 1;
   const child = Bun.spawn(argv, {
     cwd: step.cwd ? path.join(root, step.cwd) : root,
     env: { ...process.env, ...step.env },
-    stdin: step.input === undefined ? "inherit" : new Blob([step.input]),
+    stdin: step.input === undefined ? "ignore" : new Blob([step.input]),
     stdout: "inherit",
     stderr: "inherit",
   });
+  const timeoutMs = step.timeoutMs ?? DEFAULT_STEP_TIMEOUT_MS;
+  let timedOut = false;
+  let killTimer;
+  const timer = setTimeout(() => {
+    timedOut = true;
+    child.kill();
+    killTimer = setTimeout(() => child.kill(9), 5_000);
+  }, timeoutMs);
   const abort = () => child.kill();
   signal?.addEventListener("abort", abort, { once: true });
   try {
-    return await child.exited;
+    const status = await child.exited;
+    if (timedOut) {
+      process.stderr.write(
+        `✗ ${argv.join(" ")} exceeded ${Math.round(timeoutMs / 1_000)}s and was stopped\n`,
+      );
+      return 124;
+    }
+    return status;
   } finally {
+    clearTimeout(timer);
+    if (killTimer !== undefined) clearTimeout(killTimer);
     signal?.removeEventListener("abort", abort);
   }
 }
