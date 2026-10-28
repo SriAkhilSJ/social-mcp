@@ -59,3 +59,27 @@ func TestContentOpenRouterRetriesPastLegacyFiveSecondBudget(t *testing.T) {
 	require.Equal(t, "recovered", result.Text)
 	require.Greater(t, requests.Load(), int32(1))
 }
+
+func TestNewContentGeneratorPrefersConfiguredCompatibleEndpoint(t *testing.T) {
+	generator, err := newContentGenerator(&config.Config{
+		OpenRouterAPIKey:      "openrouter-key",
+		TextGenerationAPIKey:  "velona-key",
+		TextGenerationBaseURL: "https://api.velona.example/v1",
+	})
+
+	require.NoError(t, err)
+	require.IsType(t, &ai.OpenAICompatible{}, generator)
+}
+
+func TestNewContentGeneratorRetainsOpenRouterFallback(t *testing.T) {
+	generator, err := newContentGenerator(&config.Config{OpenRouterAPIKey: "openrouter-key"})
+
+	require.NoError(t, err)
+	require.IsType(t, &ai.OpenRouter{}, generator)
+}
+
+func TestNewContentGeneratorRejectsPartialCompatibleEndpointConfig(t *testing.T) {
+	_, err := newContentGenerator(&config.Config{TextGenerationAPIKey: "velona-key"})
+
+	require.ErrorContains(t, err, "OPENPOST_TEXT_GENERATION_BASE_URL is required")
+}

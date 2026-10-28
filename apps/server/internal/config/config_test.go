@@ -52,6 +52,10 @@ var configTestEnvKeys = []string{
 	"OPENPOST_PRIVACY_VERSION",
 	"OPENPOST_SUPPORT_EMAIL",
 	"OPENROUTER_API_KEY",
+	"OPENPOST_TEXT_GENERATION_API_KEY",
+	"OPENPOST_TEXT_GENERATION_BASE_URL",
+	"VELONA_API_KEY",
+	"VELONA_BASE_URL",
 	"OPENPOST_CONTENT_AI_PROVIDER",
 	"OPENPOST_CONTENT_AI_REQUIRE_ZDR",
 	"OPENPOST_IMAGE_CAPTION_MODEL",
@@ -176,6 +180,31 @@ func TestLoadResolvesRelativeMediaURLAgainstCanonicalPublicURL(t *testing.T) {
 	cfg := Load()
 
 	require.Equal(t, "https://public.example.com/openpost/assets/media", cfg.MediaURL)
+}
+
+func TestLoadTextGenerationProviderConfiguration(t *testing.T) {
+	t.Setenv("VELONA_API_KEY", "velona-key")
+	t.Setenv("VELONA_BASE_URL", "https://api.velona.example/v1")
+
+	cfg := Load()
+
+	require.Equal(t, "velona-key", cfg.TextGenerationAPIKey)
+	require.Equal(t, "https://api.velona.example/v1", cfg.TextGenerationBaseURL)
+
+	t.Setenv("OPENPOST_TEXT_GENERATION_API_KEY", "openpost-key")
+	t.Setenv("OPENPOST_TEXT_GENERATION_BASE_URL", "https://text.example.test/v1")
+
+	cfg = Load()
+
+	require.Equal(t, "openpost-key", cfg.TextGenerationAPIKey)
+	require.Equal(t, "https://text.example.test/v1", cfg.TextGenerationBaseURL)
+}
+
+func TestLoadTextGenerationProviderKeyFromFile(t *testing.T) {
+	t.Setenv("VELONA_API_KEY", "")
+	t.Setenv("VELONA_API_KEY_FILE", writeEnvFile(t, "velona-key", "velona-file-key\n"))
+
+	require.Equal(t, "velona-file-key", Load().TextGenerationAPIKey)
 }
 
 func TestLoadControlsOAuthDynamicClientRegistration(t *testing.T) {
@@ -559,6 +588,16 @@ func TestValidateRuntimePinsManagedAIToZdrEUProvider(t *testing.T) {
 	cfg.ImageCaptionProvider = "azure/eu"
 	cfg.ImageCaptionRequireZDR = true
 	require.NoError(t, cfg.ValidateRuntime())
+}
+
+func TestValidateRuntimeRejectsCustomTextGenerationInCloud(t *testing.T) {
+	cfg := validCloudRuntimeConfig()
+	cfg.TextGenerationAPIKey = "provider-key"
+	cfg.TextGenerationBaseURL = "https://text.example.test/v1"
+
+	err := cfg.ValidateRuntime()
+
+	require.ErrorContains(t, err, "custom OpenAI-compatible text generation is only supported in self-hosted instances")
 }
 
 func validCloudRuntimeConfig() *Config {

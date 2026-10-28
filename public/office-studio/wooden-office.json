@@ -1,0 +1,123 @@
+{
+  "schemaVersion": "1.0",
+  "type": "agentworld-scene-bundle",
+  "office": {
+    "id": "custom_office_1791845097453",
+    "name": "Warm Wooden Studio",
+    "description": "User office (1536 × 1024)",
+    "tone": "custom",
+    "width": 1536,
+    "height": 1024,
+    "background": "/offices/wooden-office.webp",
+    "backupBackground": "/offices/wooden-office.webp"
+  },
+  "seats": [
+    {
+      "id": "seat-1",
+      "label": "Desk 1",
+      "x": 270,
+      "y": 480,
+      "width": 180,
+      "zIndex": 2,
+      "character": {
+        "id": "data_agent_1",
+        "name": "Agent 1",
+        "width": 333,
+        "height": 501,
+        "thumbnail": "/agents/data_agent_1/frame-0.webp",
+        "sprite": "/agents/data_agent_1/frame-0.webp",
+        "animations": {
+          "typing": [
+            "/agents/data_agent_1/frame-0.webp",
+            "/agents/data_agent_1/frame-1.webp",
+            "/agents/data_agent_1/frame-2.webp",
+            "/agents/data_agent_1/frame-3.webp",
+            "/agents/data_agent_1/frame-4.webp",
+            "/agents/data_agent_1/frame-5.webp"
+          ]
+        }
+      }
+    },
+    {
+      "id": "seat-mv5ubm05",
+      "label": "Desk 2",
+      "x": 468,
+      "y": 250,
+      "width": 164,
+      "zIndex": 3,
+      "character": {
+        "id": "data_agent_6",
+        "name": "Agent 6",
+        "width": 332,
+        "height": 449,
+        "thumbnail": "/agents/data_agent_6/frame-0.webp",
+        "sprite": "/agents/data_agent_6/frame-0.webp",
+        "animations": {
+          "typing": [
+            "/agents/data_agent_6/frame-0.webp",
+            "/agents/data_agent_6/frame-1.webp",
+            "/agents/data_agent_6/frame-2.webp",
+            "/agents/data_agent_6/frame-3.webp",
+            "/agents/data_agent_6/frame-4.webp",
+            "/agents/data_agent_6/frame-5.webp",
+            "/agents/data_agent_6/frame-6.webp",
+            "/agents/data_agent_6/frame-7.webp"
+          ]
+        }
+      }
+    },
+    {
+      "id": "seat-mv5ubu9u",
+      "label": "Desk 2 (Copy)",
+      "x": 969,
+      "y": 396,
+      "width": 178,
+      "zIndex": 4,
+      "character": {
+        "id": "data_agent_7",
+        "name": "Agent 7",
+        "width": 337,
+        "height": 447,
+        "thumbnail": "/agents/data_agent_7/frame-0.webp",
+        "sprite": "/agents/data_agent_7/frame-0.webp",
+        "animations": {
+          "typing": [
+            "/agents/data_agent_7/frame-0.webp",
+            "/agents/data_agent_7/frame-1.webp",
+            "/agents/data_agent_7/frame-2.webp",
+            "/agents/data_agent_7/frame-3.webp",
+            "/agents/data_agent_7/frame-4.webp",
+            "/agents/data_agent_7/frame-5.webp",
+            "/agents/data_agent_7/frame-6.webp"
+          ]
+        }
+      }
+    },
+    {
+      "id": "seat-mv5uc5o0",
+      "label": "Desk 1 (Copy)",
+      "x": 825,
+      "y": 709,
+      "width": 180,
+      "zIndex": 3,
+      "character": {
+        "id": "data_agent_2",
+        "name": "Agent Alex",
+        "width": 348,
+        "height": 503,
+        "thumbnail": "/agents/data_agent_2/frame-0.webp",
+        "sprite": "/agents/data_agent_2/frame-0.webp",
+        "animations": {
+          "typing": [
+            "/agents/data_agent_2/frame-0.webp",
+            "/agents/data_agent_2/frame-1.webp",
+            "/agents/data_agent_2/frame-2.webp",
+            "/agents/data_agent_2/frame-3.webp",
+            "/agents/data_agent_2/frame-4.webp",
+            "/agents/data_agent_2/frame-5.webp"
+          ]
+        }
+      }
+    }
+  ]
+}

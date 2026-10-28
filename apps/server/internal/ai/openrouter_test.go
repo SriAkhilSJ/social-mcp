@@ -242,3 +242,87 @@ func TestOpenRouterGenerateValidatesImageBeforeRequest(t *testing.T) {
 	var providerError *ProviderError
 	require.False(t, errors.As(err, &providerError))
 }
+
+func TestOpenAICompatibleGenerateUsesStandardChatCompletionRequest(t *testing.T) {
+	var received map[string]any
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodPost, r.Method)
+		require.Equal(t, "/v1/chat/completions", r.URL.Path)
+		require.Equal(t, "Bearer compatible-api-key", r.Header.Get("Authorization"))
+		require.Empty(t, r.Header.Get("HTTP-Referer"))
+		require.Empty(t, r.Header.Get("X-Title"))
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&received))
+
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{
+			"id":"compatible-generation",
+			"object":"chat.completion",
+			"created":1730000000,
+			"model":"velona-content-v1",
+			"choices":[{"index":0,"message":{"role":"assistant","content":"draft copy"},"finish_reason":"stop"}],
+			"usage":{"prompt_tokens":12,"completion_tokens":7,"total_tokens":19}
+		}`))
+	}))
+	t.Cleanup(server.Close)
+
+	generator, err := NewOpenAICompatible(OpenAICompatibleConfig{
+		APIKey:     "compatible-api-key",
+		BaseURL:    server.URL + "/v1/",
+		HTTPClient: server.Client(),
+		MaxRetries: 1,
+	})
+	require.NoError(t, err)
+
+	result, err := generator.Generate(context.Background(), GenerateRequest{
+		Model:      "velona-content-v1",
+		UserPrompt: "Write one concise draft.",
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, "draft copy", result.Text)
+	require.Equal(t, "velona-content-v1", result.Model)
+	require.Equal(t, "compatible-generation", result.RequestID)
+	require.Equal(t, int64(12), result.Usage.InputTokens)
+	require.Equal(t, int64(7), result.Usage.OutputTokens)
+	require.Equal(t, int64(19), result.Usage.TotalTokens)
+	require.Equal(t, "velona-content-v1", received["model"])
+	require.Equal(t, false, received["stream"])
+	require.NotContains(t, received, "provider")
+	require.NotContains(t, received, "tools")
+}
+
+func TestOpenAICompatibleGenerateRejectsOpenRouterWebSearch(t *testing.T) {
+	generator, err := NewOpenAICompatible(OpenAICompatibleConfig{
+		APIKey:  "compatible-api-key",
+		BaseURL: "https://api.example.test/v1",
+	})
+	require.NoError(t, err)
+
+	_, err = generator.Generate(context.Background(), GenerateRequest{
+		Model:      "content-v1",
+		UserPrompt: "Research this topic.",
+		WebSearch:  WebSearchConfig{Enabled: true},
+	})
+
+	require.EqualError(t, err, "AI web search is only available through OpenRouter")
+}
+
+func TestNewOpenAICompatibleRejectsInvalidBaseURL(t *testing.T) {
+	for _, baseURL := range []string{
+		"",
+		"api.example.test/v1",
+		"ftp://api.example.test/v1",
+		"https://user:password@api.example.test/v1",
+		"https://api.example.test/v1?token=secret",
+		"https://api.example.test/v1#fragment",
+	} {
+		t.Run(baseURL, func(t *testing.T) {
+			_, err := NewOpenAICompatible(OpenAICompatibleConfig{
+				APIKey:  "compatible-api-key",
+				BaseURL: baseURL,
+			})
+
+			require.ErrorContains(t, err, "base URL must be an absolute HTTP or HTTPS URL")
+		})
+	}
+}

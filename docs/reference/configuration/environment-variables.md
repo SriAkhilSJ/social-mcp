@@ -106,18 +106,20 @@ Bootstrap and data-plane settings stay deployment-only because OpenPost needs th
 | `OPENPOST_PEXELS_API_KEY` | No | empty | Server-only Pexels API key for photo and video search. |
 | `OPENPOST_UNSPLASH_ACCESS_KEY` | No | empty | Server-only Unsplash access key for photo search and required selection tracking. |
 | `OPENPOST_PIXABAY_API_KEY` | No | empty | Server-only Pixabay API key for image and video search. |
-| `OPENROUTER_API_KEY` | No | empty | Server-only OpenRouter key that enables AI post building, meme suggestions, and automatic image alt text. Supports `OPENROUTER_API_KEY_FILE`. |
+| `OPENROUTER_API_KEY` | No | empty | Server-only OpenRouter key for automatic image alt text, workflow AI decisions, and text generation when no custom text endpoint is configured. Supports `OPENROUTER_API_KEY_FILE`. |
+| `OPENPOST_TEXT_GENERATION_API_KEY` | No | empty | Server-only key for a self-hosted OpenAI-compatible text-generation API. Supports `OPENPOST_TEXT_GENERATION_API_KEY_FILE`; `VELONA_API_KEY` is an alias. |
+| `OPENPOST_TEXT_GENERATION_BASE_URL` | Required with custom text API key | empty | API root for a self-hosted OpenAI-compatible text-generation API, typically ending in `/v1`. `VELONA_BASE_URL` is an alias. |
 | `OPENPOST_CONTENT_AI_PROVIDER` | No | image-caption provider | Exact OpenRouter provider slug allowed for post building and AI meme suggestions. The Hosted service requires `azure/eu`. |
 | `OPENPOST_CONTENT_AI_REQUIRE_ZDR` | No | image-caption ZDR policy | Require OpenRouter to use zero-data-retention endpoints for post building and AI meme suggestions. The Hosted service requires `true`. |
 | `OPENPOST_IMAGE_CAPTION_MODEL` | No | `openai/gpt-6-luna` | OpenRouter model ID used for automatic image alt text. |
-| `OPENPOST_TEXT_GENERATION_MODEL` | No | `openai/gpt-6-luna` | OpenRouter model ID used to build publication copy from an idea. |
+| `OPENPOST_TEXT_GENERATION_MODEL` | No | `openai/gpt-6-luna` | Model ID used to build publication copy from an idea. The default is for OpenRouter; use a supported model ID when a custom endpoint is configured. |
 | `OPENPOST_WORKFLOW_DECISION_MODEL` | No | `typesafe/jev-1.13` | OpenRouter Decisions model for workflow Yes/No branches. Uses TypeSafe routing and the content AI ZDR setting. |
 | `OPENPOST_WORKFLOWS_AI_ENABLED` | No | `true` | Enables new autonomous workflow AI calls. Set false for an operator kill switch. |
 | `OPENPOST_WORKFLOWS_AI_MONTHLY_CALL_LIMIT` | No | `1000` | Calls per Workspace UTC month, including failures. Zero explicitly permits unlimited calls; negative values are invalid. |
 | `OPENPOST_IMAGE_CAPTION_PROVIDER` | No | empty | Exact OpenRouter provider slug allowed for automatic image alt text. An empty value uses normal eligible-provider routing. |
 | `OPENPOST_IMAGE_CAPTION_REQUIRE_ZDR` | No | `false` | Require OpenRouter to use a zero-data-retention endpoint for automatic image alt text. Verify the configured model/provider pair supports ZDR before enabling. |
 | `OPENPOST_MEME_GENERATOR_ENABLED` | No | `true` | Enables the built-in template catalog, local previews and rendering, and durable OpenPost recipes. |
-| `OPENPOST_MEME_GENERATION_MODEL` | No | `openai/gpt-6-luna` | OpenRouter model used for optional meme template and caption suggestions. |
+| `OPENPOST_MEME_GENERATION_MODEL` | No | `openai/gpt-6-luna` | Model ID used for optional meme template and caption suggestions. The default is for OpenRouter; use a supported model ID when a custom endpoint is configured. |
 | `OPENPOST_FEEDBACK_ENABLED` | No | `false` | Shows the authenticated feedback form only when a valid destination and recipient are also configured. |
 | `OPENPOST_FEEDBACK_DESTINATION_URL` | Required when feedback is enabled | empty | Server-only HTTPS Discord-compatible webhook. Use `OPENPOST_FEEDBACK_DESTINATION_URL_FILE` for a managed secret. |
 | `OPENPOST_FEEDBACK_RECIPIENT` | Required when feedback is enabled | empty | Plain recipient name shown to users before they send a report, such as `OpenPost team` or `Example operator`. |

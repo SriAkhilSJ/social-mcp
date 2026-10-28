@@ -695,16 +695,16 @@ func main() {
 		if err != nil {
 			fatalfWithDiagnostics(diagnosticsReporter, "failed to initialize OpenRouter image generator: %v", err)
 		}
-		contentGenerator, err = ai.NewOpenRouter(contentConfig)
-		if err != nil {
-			fatalfWithDiagnostics(diagnosticsReporter, "failed to initialize OpenRouter text generator: %v", err)
-		}
 		decisionConfig := contentConfig
 		decisionConfig.Provider = "typesafe"
 		decisionGenerator, err = ai.NewOpenRouter(decisionConfig)
 		if err != nil {
 			fatalfWithDiagnostics(diagnosticsReporter, "failed to initialize workflow decisions: %v", err)
 		}
+	}
+	contentGenerator, err = newContentGenerator(cfg)
+	if err != nil {
+		fatalfWithDiagnostics(diagnosticsReporter, "failed to initialize text generation: %v", err)
 	}
 
 	var imageCaptioner imagecaption.Captioner
@@ -726,12 +726,16 @@ func main() {
 		if err != nil {
 			fatalfWithDiagnostics(diagnosticsReporter, "failed to initialize AI post builder: %v", err)
 		}
-		log.Printf(
-			"AI post builder enabled with model %s provider %s zero_data_retention=%t",
-			cfg.TextGenerationModel,
-			cfg.ContentAIProvider,
-			cfg.ContentAIRequireZDR,
-		)
+		if cfg.TextGenerationAPIKey != "" {
+			log.Printf("AI post builder enabled with model %s through the configured OpenAI-compatible text endpoint", cfg.TextGenerationModel)
+		} else {
+			log.Printf(
+				"AI post builder enabled with model %s provider %s zero_data_retention=%t",
+				cfg.TextGenerationModel,
+				cfg.ContentAIProvider,
+				cfg.ContentAIRequireZDR,
+			)
+		}
 	}
 
 	repurposeSuggestions := repurpose.New(db, contentGenerator, cfg.TextGenerationModel)

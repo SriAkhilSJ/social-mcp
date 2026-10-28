@@ -1,10 +1,10 @@
 ---
 title: AI providers
-description: Configure OpenRouter for text and captions, and fal for image generation and editing.
+description: Configure OpenRouter or an OpenAI-compatible text endpoint, plus fal for image generation and editing.
 icon: Sparkles
 ---
 
-Add an OpenRouter key to enable AI post generation and automatic image captions. Writing, scheduling, and publishing work without it.
+OpenRouter enables automatic image captions and workflow AI decisions. Text generation can use OpenRouter or a self-hosted OpenAI-compatible endpoint. Writing, scheduling, and publishing work without either provider.
 
 ## Add a key
 
@@ -26,14 +26,30 @@ You can leave the model values unset to use OpenPost's defaults. `OPENPOST_CONTE
 
 Keep the key in your server secret store. Use `OPENROUTER_API_KEY_FILE` for a mounted secret file. Do not include it in posts, prompts, or logs.
 
+## Use an OpenAI-compatible text endpoint
+
+For self-hosted instances, text generation can use a provider that implements the OpenAI Chat Completions API. Velona credentials can use this path if your Velona account provides a compatible API base URL and model ID:
+
+```dotenv
+OPENPOST_TEXT_GENERATION_API_KEY=your-provider-key
+OPENPOST_TEXT_GENERATION_BASE_URL=https://api.example.test/v1
+OPENPOST_TEXT_GENERATION_MODEL=your-provider-model-id
+```
+
+The base URL is the API root, not the `/chat/completions` endpoint. `VELONA_API_KEY` and `VELONA_BASE_URL` are also accepted as aliases; the `OPENPOST_TEXT_GENERATION_*` values take precedence. The custom endpoint takes precedence over OpenRouter for text generation. If both providers are configured, OpenRouter continues to handle image captions and workflow AI decisions. OpenRouter-specific provider routing, zero-retention policy, and web search do not apply to the custom endpoint. Custom endpoints are not available in Hosted.
+
+Keep the API key server-side. Use `OPENPOST_TEXT_GENERATION_API_KEY_FILE` for a mounted secret file. Set each model used by the enabled feature to an ID supported by your provider: `OPENPOST_TEXT_GENERATION_MODEL` for post generation and related text features, `OPENPOST_MEME_GENERATION_MODEL` for meme suggestions, and `OPENPOST_EDITOR_AGENT_MODEL` for the editor assistant. OpenPost's defaults are intended for OpenRouter and may not work with another provider. The configured provider receives the text-generation requests and context submitted to those features. Media, structured-output, and other advanced request shapes also depend on the model's supported capabilities. Review the provider's privacy, retention, and billing terms before enabling it.
+
+This setting does not train a model or automatically process imported-post history. Imported posts remain a read-only inventory; AI features only receive the context they explicitly include in an individual request.
+
 ## Check the setup
 
 1. Open a new post and ask the AI builder to turn a short idea into a draft. Review the generated copy before saving or publishing.
 2. Add an image with no existing alt text to the composer and generate a caption. Review it before publishing. Existing alt text is kept.
 
-Post generation sends the idea and selected context to the configured model through OpenRouter. Automatic alt text sends a 400 px JPEG thumbnail and up to 1,000 characters of relevant post text, rather than the original image. Background removal, video editing, and local transcription run in the browser and do not require this key.
+Post generation sends the idea and selected context to the configured text-generation provider. Automatic alt text sends a 400 px JPEG thumbnail and up to 1,000 characters of relevant post text, rather than the original image, through OpenRouter. Background removal, video editing, and local transcription run in the browser and do not require an AI provider key.
 
-If a request fails, check the container logs for an OpenRouter error, then check the key, model ID, balance, provider slug, and zero-retention setting. A text-only model may not be suitable for image captions.
+If a request fails, check the sanitized provider error in the container logs, then check the key, model ID, and account balance. For OpenRouter, also check the provider slug and zero-retention setting. A text-only model may not be suitable for image captions.
 
 Workflow AI decisions use Jev through OpenRouter's Decisions API. They route through TypeSafe and retain the content AI zero-data-retention requirement. Existing saved model settings take precedence over these defaults.
 

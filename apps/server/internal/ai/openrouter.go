@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"mime"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -59,9 +60,21 @@ type OpenRouter struct {
 	requireZDR bool
 }
 
-// OpenRouter may return assistant content as either a string or an array of
-// typed text parts. The OpenAI SDK request path still owns auth, retries, and
-// transport, while this narrow response shape preserves that router extension.
+type OpenAICompatibleConfig struct {
+	APIKey           string
+	BaseURL          string
+	HTTPClient       HTTPClient
+	Timeout          time.Duration
+	MaxRetries       int
+	RetryMaxInterval time.Duration
+}
+
+type OpenAICompatible struct {
+	client openai.Client
+}
+
+// Compatible chat-completion APIs may return assistant content as either a
+// string or an array of typed text parts.
 type openRouterChatCompletion struct {
 	ID      string                    `json:"id"`
 	Model   string                    `json:"model"`
@@ -83,6 +96,7 @@ type openRouterCompletionUsage struct {
 }
 
 var _ Generator = (*OpenRouter)(nil)
+var _ Generator = (*OpenAICompatible)(nil)
 
 func NewOpenRouter(config OpenRouterConfig) (*OpenRouter, error) {
 	apiKey := strings.TrimSpace(config.APIKey)
@@ -133,23 +147,77 @@ func NewOpenRouter(config OpenRouterConfig) (*OpenRouter, error) {
 	}, nil
 }
 
+func NewOpenAICompatible(config OpenAICompatibleConfig) (*OpenAICompatible, error) {
+	apiKey := strings.TrimSpace(config.APIKey)
+	if apiKey == "" {
+		return nil, errors.New("OpenAI-compatible API key is required")
+	}
+
+	baseURL := strings.TrimSpace(config.BaseURL)
+	parsedURL, err := url.Parse(baseURL)
+	if err != nil || parsedURL == nil || parsedURL.Host == "" ||
+		(parsedURL.Scheme != "http" && parsedURL.Scheme != "https") ||
+		parsedURL.User != nil || parsedURL.RawQuery != "" || parsedURL.Fragment != "" {
+		return nil, errors.New("OpenAI-compatible base URL must be an absolute HTTP or HTTPS URL without credentials, query, or fragment")
+	}
+
+	timeout := durationOrDefault(config.Timeout, defaultOpenRouterTimeout)
+	retryMax := durationOrDefault(config.RetryMaxInterval, defaultRetryMaxInterval)
+	maxRetries := config.MaxRetries
+	if maxRetries == 0 {
+		maxRetries = defaultOpenRouterMaxRetries
+	}
+	if timeout <= 0 || retryMax <= 0 || maxRetries < 0 {
+		return nil, errors.New("OpenAI-compatible timeout and retry durations must be positive")
+	}
+
+	options := []option.RequestOption{
+		option.WithAPIKey(apiKey),
+		option.WithBaseURL(strings.TrimRight(baseURL, "/")),
+		option.WithRequestTimeout(timeout),
+		option.WithMaxRetries(maxRetries),
+		option.WithMaxRetryDelay(retryMax),
+	}
+	if config.HTTPClient != nil {
+		options = append(options, option.WithHTTPClient(config.HTTPClient))
+	}
+
+	return &OpenAICompatible{client: openai.NewClient(options...)}, nil
+}
+
 func (o *OpenRouter) Generate(ctx context.Context, request GenerateRequest) (GenerateResult, error) {
-	chatRequest, requestOptions, err := buildOpenRouterRequest(request, o.provider, o.requireZDR)
+	return generateChatCompletion(ctx, o.client, request, o.provider, o.requireZDR, true, "OpenRouter")
+}
+
+func (o *OpenAICompatible) Generate(ctx context.Context, request GenerateRequest) (GenerateResult, error) {
+	return generateChatCompletion(ctx, o.client, request, "", false, false, "OpenAI-compatible")
+}
+
+func generateChatCompletion(
+	ctx context.Context,
+	client openai.Client,
+	request GenerateRequest,
+	providerSlug string,
+	requireZDR bool,
+	includeOpenRouterOptions bool,
+	providerName string,
+) (GenerateResult, error) {
+	chatRequest, requestOptions, err := buildChatCompletionRequest(request, providerSlug, requireZDR, includeOpenRouterOptions)
 	if err != nil {
 		return GenerateResult{}, err
 	}
 
 	var response openRouterChatCompletion
 	requestOptions = append(requestOptions, option.WithResponseBodyInto(&response))
-	_, err = o.client.Chat.Completions.New(ctx, chatRequest, requestOptions...)
+	_, err = client.Chat.Completions.New(ctx, chatRequest, requestOptions...)
 	if err != nil && errors.Is(err, context.DeadlineExceeded) && ctx.Err() == nil {
 		// The SDK exhausted its retry scope before the feature request budget.
 		// Start one fresh read-only generation while the caller can still wait.
 		response = openRouterChatCompletion{}
-		_, err = o.client.Chat.Completions.New(ctx, chatRequest, requestOptions...)
+		_, err = client.Chat.Completions.New(ctx, chatRequest, requestOptions...)
 	}
 	if err != nil {
-		return GenerateResult{}, sanitizeOpenRouterError(err)
+		return GenerateResult{}, sanitizeProviderError(err, providerName)
 	}
 
 	text := extractOpenRouterText(response)
@@ -170,10 +238,11 @@ func (o *OpenRouter) Generate(ctx context.Context, request GenerateRequest) (Gen
 }
 
 //nolint:gocyclo // Provider-neutral generation options intentionally converge at this SDK request boundary.
-func buildOpenRouterRequest(
+func buildChatCompletionRequest(
 	request GenerateRequest,
 	providerSlug string,
 	requireZDR bool,
+	includeOpenRouterOptions bool,
 ) (openai.ChatCompletionNewParams, []option.RequestOption, error) {
 	model := strings.TrimSpace(request.Model)
 	if model == "" {
@@ -184,6 +253,9 @@ func buildOpenRouterRequest(
 	}
 	if request.MaxOutputTokens < 0 {
 		return openai.ChatCompletionNewParams{}, nil, errors.New("AI maximum output tokens must not be negative")
+	}
+	if request.WebSearch.Enabled && !includeOpenRouterOptions {
+		return openai.ChatCompletionNewParams{}, nil, errors.New("AI web search is only available through OpenRouter")
 	}
 	webSearchTool, hasWebSearch, err := openRouterWebSearchTool(request.WebSearch)
 	if err != nil {
@@ -266,9 +338,9 @@ func buildOpenRouterRequest(
 	if request.MaxOutputTokens > 0 {
 		chatRequest.MaxCompletionTokens = param.NewOpt(request.MaxOutputTokens)
 	}
-	requestOptions := []option.RequestOption{
-		option.WithJSONSet("stream", false),
-		option.WithJSONSet("provider", providerPreferences),
+	requestOptions := []option.RequestOption{option.WithJSONSet("stream", false)}
+	if includeOpenRouterOptions {
+		requestOptions = append(requestOptions, option.WithJSONSet("provider", providerPreferences))
 	}
 	if hasWebSearch {
 		requestOptions = append(requestOptions, option.WithJSONSet("tools", []any{webSearchTool}))
@@ -593,13 +665,17 @@ func openRouterUsage(usage openRouterCompletionUsage) Usage {
 }
 
 func sanitizeOpenRouterError(err error) error {
+	return sanitizeProviderError(err, "OpenRouter")
+}
+
+func sanitizeProviderError(err error, provider string) error {
 	if errors.Is(err, context.Canceled) {
 		return context.Canceled
 	}
 	if errors.Is(err, context.DeadlineExceeded) {
 		return context.DeadlineExceeded
 	}
-	return &ProviderError{Provider: "OpenRouter", StatusCode: openRouterStatusCode(err)}
+	return &ProviderError{Provider: provider, StatusCode: openRouterStatusCode(err)}
 }
 
 func openRouterStatusCode(err error) int {
