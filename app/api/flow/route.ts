@@ -200,16 +200,16 @@ export async function POST(req: Request) {
     if (body.action === "chat") {
       const lower = rawInput.toLowerCase();
       if (lower.includes("rain") || lower.includes("glass") || lower.includes("lighting")) {
-        flowPrompt = `Cinematic anime visual, an intelligent blind gangster in charcoal suit, heavy rain dripping on dark sunglasses, neon red and cyan street reflections, 8k resolution, photorealistic cinematic lighting`;
+        flowPrompt = `Cinematic anime visual, rain drenched city streets, heavy rain dripping on dark sunglasses, neon red and cyan reflections, 8k resolution, photorealistic cinematic lighting`;
         directorReply = `Understood! Adjusting the lighting and atmospheric mood. Directing Google Flow with high-contrast neon reflections and rain physics.`;
       } else if (lower.includes("boardroom") || lower.includes("meeting") || lower.includes("ambush")) {
-        flowPrompt = `Cinematic wide angle anime scene, blind gangster holding walking cane standing at head of luxury syndicate boardroom, stunned mafia bosses, dramatic chiaroscuro shadows, 8k resolution`;
+        flowPrompt = `Cinematic wide angle anime scene, syndicate boardroom confrontation, dramatic chiaroscuro shadows, high stakes, 8k resolution`;
         directorReply = `Drafting the boardroom confrontation. Directing Google Flow to render the tense atmosphere and syndicate table framing.`;
       } else if (lower.includes("daughter") || lower.includes("boss") || lower.includes("girl")) {
         flowPrompt = `Cinematic emotional anime scene, dangerous mafia boss gently protecting his young daughter in a dark luxury penthouse overlooking the neon city, cinematic lighting, 8k resolution`;
         directorReply = `Focusing on the emotional story arc. Directing Google Flow with cinematic penthouse lighting and protective father-daughter framing.`;
       } else if (lower.includes("animate") || lower.includes("video") || lower.includes("veo")) {
-        flowPrompt = `Animate this scene into a cinematic 9:16 vertical video using Veo 3.1 with camera panning slowly past the blind gangster as rain drops fall on neon pavement`;
+        flowPrompt = `Animate this scene into a cinematic 9:16 vertical video using Veo 3.1 with camera panning slowly across the neon pavement`;
         directorReply = `Triggering Veo 3.1 video animation engine in Google Flow with a 9:16 vertical motion track.`;
       } else {
         flowPrompt = `Cinematic high-IQ psychological anime style, ${rawInput}, moody neon lighting, 8k resolution, cinematic masterpiece`;

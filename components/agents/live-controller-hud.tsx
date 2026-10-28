@@ -120,7 +120,7 @@ export function LiveControllerHud({
   };
 
   const QUICK_PROMPTS = [
-    { label: "♟️ Ren Campaign Strategy", prompt: "What is our tactical release strategy for An Intelligent Blind Gangster?" },
+    { label: "♟️ Anime Campaign Strategy", prompt: "What is our tactical release strategy for Mafia Boss Dad & Daughter?" },
     { label: "🎨 Flow Rain Scene", prompt: "Direct Google Flow to create a cinematic 9:16 anime scene of Ren Kurokawa in rain with dark glasses." },
     { label: "📊 Facebook Traction", prompt: "Analyze our Facebook Page traction and audience retention curves." },
     { label: "📅 Schedule Queue", prompt: "What posts are currently scheduled in our publishing queue?" },

@@ -365,6 +365,8 @@ export async function generateFlowVideo(params: {
   duration?: VideoDuration;
   maxCredits?: number;
   project?: string;
+  referenceImages?: string[];
+  firstFrame?: string;
 }): Promise<{
   url: string;
   fileId: string;
@@ -400,6 +402,8 @@ export async function generateFlowVideo(params: {
               duration: model === "Omni 1.1 Flash" ? duration : undefined,
               max_credits: maxCredits,
               download_quality: "upscaled",
+              reference_images: params.referenceImages,
+              first_frame: params.firstFrame,
             },
           ],
         }),

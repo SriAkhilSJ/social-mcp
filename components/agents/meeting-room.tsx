@@ -28,9 +28,9 @@ export interface MeetingMessage {
 }
 
 const PRESET_TOPICS = [
-  "Launch Strategy: 'An Intelligent Blind Gangster' — The Syndicate Betrayal & Rise to Power",
+  "Launch Strategy: 'Mafia Boss Dad & Daughter' — The Syndicate Betrayal & Rise to Power",
   "Episode 1 Hook: The night they blinded him, and how he dismantled them in the dark",
-  "How to scale 'An Intelligent Blind Gangster' to 1M+ views on Facebook Reels & TikTok",
+  "How to scale our Anime Reels series to 1M+ views across Facebook and TikTok",
   "Veo 3.1 Visual Direction: Noir anime, dark glasses, rain-soaked streets, and high-IQ chess moves",
 ];
 

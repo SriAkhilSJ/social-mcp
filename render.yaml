@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: openpost-social-agent
+    runtime: node
+    plan: free
+    region: oregon
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    healthCheckPath: /api/gpt/actions?action=status
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_OPTIONS
+        value: "--max-old-space-size=1024"
+      - key: ENFORCE_STRICT_AUTH
+        value: "false"

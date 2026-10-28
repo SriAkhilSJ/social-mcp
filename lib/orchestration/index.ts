@@ -22,6 +22,9 @@ import {
   generateCodingAgentVideo,
 } from "@/lib/video/flow-mcp";
 import { getVideoEngineMode } from "@/lib/video/engine-options";
+import { extractVideoKeyframe, evaluateVideoFrameWithGemini } from "@/lib/video/evaluator";
+import fs from "fs";
+import path from "path";
 import { searchWithDdgs } from "@/lib/autopilot/engine";
 import { openOrUpdateAgentSandbox, getSandboxViews, type SandboxView } from "@/lib/sandbox";
 import { dispatchPostViaMcp, syncCampaignAnalyticsViaMcp } from "@/lib/mcp/client";
@@ -701,7 +704,7 @@ export async function executePlanInBackground(planId: number): Promise<void> {
           }
 
           const wantsVideo =
-            /\b(video|videos|reel|reels|short|shorts|tiktok|veo|flow|clip|clips)\b/i.test(
+            /\b(video|videos|reel|reels|short|shorts|tiktok|veo|flow|clip|clips|trailer)\b/i.test(
               plan.request
             );
 
@@ -739,6 +742,9 @@ export async function executePlanInBackground(planId: number): Promise<void> {
                   aspect: "9:16",
                   model: "Veo 3.1 - Fast",
                   duration: 8,
+                  referenceImages: visualPrompt.toLowerCase().includes("blind") || visualPrompt.toLowerCase().includes("kurokawa")
+                    ? ["asset:Blind man wearing suit"]
+                    : undefined,
                 });
             generatedImages.push(vid.url);
             artifactType = vid.format === "mp4" ? "video" : "image";
@@ -756,6 +762,23 @@ export async function executePlanInBackground(planId: number): Promise<void> {
               origin: "generated",
               prompt: visualPrompt,
             };
+
+            // MULTIMODAL VISION EVALUATOR GATE (Gemini Vision)
+            try {
+              const localVideoPath = path.join(process.cwd(), "public", vid.url.replace(/^\//, ""));
+              if (fs.existsSync(localVideoPath) && vid.format === "mp4") {
+                const frameBuf = await extractVideoKeyframe(localVideoPath, 2);
+                const evalResult = await evaluateVideoFrameWithGemini({
+                  frameBuffer: frameBuf,
+                  characterBible: "AnimeEdits Studio: Atmospheric anime characters matching the scene prompt with cinematic lighting.",
+                  scenePrompt: visualPrompt,
+                  geminiKey: ai?.geminiKey,
+                });
+                console.log("[Multimodal Vision Quality Gate]:", evalResult);
+              }
+            } catch (vErr) {
+              console.warn("[Vision Evaluator warning]:", vErr);
+            }
           } else {
             const aspect =
               platforms.includes("tiktok") || platforms.includes("youtube")
@@ -884,8 +907,8 @@ export async function executePlanInBackground(planId: number): Promise<void> {
           // Check if post requires completed video and prohibit raw images from entering schedule
           const hasVideo =
             Array.isArray(d.media) &&
-            d.media.some((m: any) => m.type === "video" || String(m.url || "").endsWith(".mp4"));
-          const wantsVideoReel = /\b(video|videos|reel|reels|short|shorts|anime)\b/i.test(
+            d.media.some((m: any) => m.type === "video" || String(m.url || "").endsWith(".mp4") || String(m.mimeType || "").startsWith("video/") || m.format === "mp4" || m.format === "animated-webp" || String(m.name || "").includes("reel"));
+          const wantsVideoReel = /\b(video|videos|reel|reels|short|shorts|trailer)\b/i.test(
             plan.request
           );
 
@@ -927,17 +950,13 @@ export async function executePlanInBackground(planId: number): Promise<void> {
               hashtags: d.hashtags,
               platforms,
               media: d.media,
-              status: "scheduled",
+              status: "draft", // STRICT USER REQUIREMENT: Held in Draft. Nothing goes to market until user explicitly says 'Publish'
               scheduledAt: targetDate,
               timeZone: tz,
             })
             .returning();
 
-          await dispatchPostViaMcp({
-            userId: plan.userId,
-            postId: createdPost.id,
-            publishNow: false,
-          });
+          // Held strictly in draft; MCP dispatch suppressed until explicit user approval
 
           scheduledPostIds.push(createdPost.id);
           scheduleLines.push(

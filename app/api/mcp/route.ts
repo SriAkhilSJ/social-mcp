@@ -480,7 +480,7 @@ export async function POST(req: Request) {
     if (toolName === "openpost_send_creator_directive") {
       const message = String(args.message || args.directive || "").trim();
       const timeStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-      const prompt = `Cinematic anime visual, an intelligent blind gangster in charcoal suit, 9:16 vertical, ${message}, 8k resolution, cinematic lighting`;
+      const prompt = `Cinematic anime visual, 9:16 vertical, ${message}, 8k resolution, cinematic lighting`;
       const reply = `🎨 Directive received! Directing visual engine for '${message}'. Rendering 9:16 vertical motion scene...`;
       appendCreatorStudioMessage({
         id: `u-${Date.now()}`,
@@ -534,7 +534,7 @@ export async function POST(req: Request) {
             type: isVideo ? "video" : "image",
             fileId: path.basename(mediaUrl),
             origin: "generated",
-            prompt: "An Intelligent Blind Gangster Anime Visual",
+            prompt: title || "Cinematic Anime Visual",
             mimeType: isVideo ? "video/mp4" : "image/jpeg",
           },
         ],

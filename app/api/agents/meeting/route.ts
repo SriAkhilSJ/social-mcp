@@ -38,7 +38,7 @@ export async function POST(req: Request) {
   };
 
   const defaultTopic =
-    "Viral Launch Strategy: 'An Intelligent Blind Gangster' — Crafting Episode 1 (The Syndicate Betrayal & The Rise of the Blind Mastermind) for Facebook Reels & TikTok";
+    "Viral Launch Strategy: 'Mafia Boss Dad & Daughter' — Crafting High-Retention Episode 1 for Facebook Reels & TikTok";
 
   const topic = body.topic?.trim() || defaultTopic;
 
