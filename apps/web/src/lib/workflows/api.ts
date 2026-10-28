@@ -85,14 +85,15 @@ export function cancelRun(ws: string, run: Run) {
 	);
 }
 export function approveRun(ws: string, run: Run, revision: number, replyText?: string) {
+	const body: components['schemas']['WorkflowRevisionInputBody'] = {
+		expected_revision: run.revision,
+		publication_revision: revision
+	};
+	if (replyText !== undefined) body.reply_text = replyText;
 	return mutation(ws, () =>
 		client.POST('/workflow-runs/{id}/approve', {
 			params: { query: { workspace_id: ws }, path: { id: run.id } },
-			body: {
-				expected_revision: run.revision,
-				publication_revision: revision,
-				...(replyText === undefined ? {} : { reply_text: replyText })
-			}
+			body
 		})
 	);
 }
