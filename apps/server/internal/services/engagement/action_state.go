@@ -11,10 +11,6 @@ import (
 
 // The provider write fence has already confirmed the action. Its local state
 // and the feed wakeup commit together, including after a fence replay.
-func (s *Service) commitEngagementAction(ctx context.Context, item *models.EngagementItem, action string) error {
-	return s.commitEngagementActionReceipt(ctx, item, action, "")
-}
-
 func (s *Service) commitEngagementActionReceipt(ctx context.Context, item *models.EngagementItem, action, automationID string) error {
 	return s.db.RunInTx(ctx, nil, func(txCtx context.Context, tx bun.Tx) error {
 		if err := organizationguard.LockWorkspace(txCtx, tx, item.WorkspaceID); err != nil {
