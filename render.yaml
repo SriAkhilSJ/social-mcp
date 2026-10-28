@@ -12,6 +12,6 @@ services:
       - key: NODE_ENV
         value: production
       - key: NODE_OPTIONS
-        value: "--max-old-space-size=1024"
+        value: "--max-old-space-size=384"
       - key: ENFORCE_STRICT_AUTH
         value: "false"
