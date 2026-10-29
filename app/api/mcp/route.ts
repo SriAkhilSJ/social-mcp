@@ -517,6 +517,35 @@ export async function POST(req: Request) {
                 },
               },
             },
+            {
+              name: "update_post",
+              description:
+                "Call to update or edit an existing post draft (title, caption, platform, or hashtags).",
+              inputSchema: {
+                type: "object",
+                required: ["postId"],
+                properties: {
+                  postId: { type: "number", description: "Post ID to update" },
+                  title: { type: "string", description: "Updated title" },
+                  caption: { type: "string", description: "Updated caption / narrative" },
+                  platform: { type: "string", description: "Updated target platform" },
+                  hashtags: { type: "array", items: { type: "string" }, description: "Updated hashtags" },
+                },
+              },
+            },
+            {
+              name: "openpost_update_post",
+              description: "Alias for update_post.",
+              inputSchema: {
+                type: "object",
+                required: ["postId"],
+                properties: {
+                  postId: { type: "number" },
+                  title: { type: "string" },
+                  caption: { type: "string" },
+                },
+              },
+            },
 
             // Prefixed Aliases for Full Compatibility
             {
@@ -1069,6 +1098,73 @@ export async function POST(req: Request) {
                     success: true,
                     deletedId: deleted.id,
                     message: `Post #${postId} deleted successfully.`,
+                  },
+                  null,
+                  2
+                ),
+              },
+            ],
+          },
+        },
+        { headers: CORS_HEADERS }
+      );
+    }
+
+    // J. UPDATE POST / DRAFT
+    if (toolName === "update_post" || toolName === "openpost_update_post") {
+      const postId = Number(args.postId || args.id);
+      if (!postId) {
+        return NextResponse.json(
+          {
+            jsonrpc: "2.0",
+            id,
+            error: { code: -32602, message: "postId is required to update a post" },
+          },
+          { headers: CORS_HEADERS }
+        );
+      }
+
+      const updateData: Record<string, any> = { updatedAt: new Date() };
+      if (args.title) updateData.title = String(args.title).trim();
+      if (args.caption) updateData.caption = String(args.caption).trim();
+      if (args.platform) updateData.platforms = [String(args.platform)];
+      if (Array.isArray(args.platforms)) updateData.platforms = args.platforms;
+      if (Array.isArray(args.hashtags)) updateData.hashtags = args.hashtags;
+
+      const [updated] = await db
+        .update(posts)
+        .set(updateData)
+        .where(and(eq(posts.id, postId), eq(posts.userId, scope.userId)))
+        .returning();
+
+      if (!updated) {
+        return NextResponse.json(
+          {
+            jsonrpc: "2.0",
+            id,
+            error: { code: -32602, message: `Post #${postId} not found` },
+          },
+          { headers: CORS_HEADERS }
+        );
+      }
+
+      return NextResponse.json(
+        {
+          jsonrpc: "2.0",
+          id,
+          result: {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify(
+                  {
+                    success: true,
+                    postId: updated.id,
+                    title: updated.title,
+                    caption: updated.caption,
+                    platforms: updated.platforms,
+                    hashtags: updated.hashtags,
+                    message: `Post #${postId} updated successfully.`,
                   },
                   null,
                   2

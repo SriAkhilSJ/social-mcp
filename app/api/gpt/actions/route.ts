@@ -388,6 +388,50 @@ export async function POST(req: Request) {
     );
   }
 
+  // 5. UPDATE / EDIT POST
+  if (action === "update_post" || action === "edit_post") {
+    const postId = Number(body.postId || body.id);
+    if (!postId) {
+      return NextResponse.json(
+        { error: "postId is required to update a post" },
+        { status: 400, headers: CORS_HEADERS }
+      );
+    }
+
+    const updateData: Record<string, any> = { updatedAt: new Date() };
+    if (body.title) updateData.title = String(body.title).trim();
+    if (body.caption) updateData.caption = String(body.caption).trim();
+    if (body.platform) updateData.platforms = [String(body.platform)];
+    if (Array.isArray(body.platforms)) updateData.platforms = body.platforms;
+    if (Array.isArray(body.hashtags)) updateData.hashtags = body.hashtags;
+
+    const [updated] = await db
+      .update(posts)
+      .set(updateData)
+      .where(and(eq(posts.id, postId), eq(posts.userId, scope.userId)))
+      .returning();
+
+    if (!updated) {
+      return NextResponse.json(
+        { error: `Post #${postId} not found` },
+        { status: 404, headers: CORS_HEADERS }
+      );
+    }
+
+    return NextResponse.json(
+      {
+        success: true,
+        postId: updated.id,
+        title: updated.title,
+        caption: updated.caption,
+        platforms: updated.platforms,
+        hashtags: updated.hashtags,
+        message: `Post #${postId} updated successfully.`,
+      },
+      { headers: CORS_HEADERS }
+    );
+  }
+
   return NextResponse.json(
     { error: `Unknown action: ${action}` },
     { status: 400, headers: CORS_HEADERS }

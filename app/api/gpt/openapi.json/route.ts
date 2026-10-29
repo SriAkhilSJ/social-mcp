@@ -72,7 +72,7 @@ export async function GET(req: Request) {
           operationId: "executeAction",
           summary: "Create drafts, generate visual media, or safely publish posts",
           description:
-            "Call this whenever the user wants to prepare a post (action=draft_content), attach visuals (action=generate_media), publish to their channel (action=publish_post with confirmed=true), or delete/clear drafts (action=delete_post).",
+            "Call this whenever the user wants to prepare a post (action=draft_content), edit/update a draft (action=update_post), attach visuals (action=generate_media), publish to their channel (action=publish_post with confirmed=true), or delete/clear drafts (action=delete_post).",
           parameters: [
             {
               name: "action",
@@ -80,10 +80,10 @@ export async function GET(req: Request) {
               required: true,
               schema: {
                 type: "string",
-                enum: ["draft_content", "generate_media", "publish_post", "delete_post"],
+                enum: ["draft_content", "generate_media", "publish_post", "delete_post", "update_post"],
               },
               description:
-                "Action: 'draft_content' to create a post draft, 'generate_media' to attach visual assets, 'publish_post' to publish to connected channels, 'delete_post' to delete a post or clear all drafts.",
+                "Action: 'draft_content' to create a post draft, 'update_post' to edit/revise an existing draft, 'generate_media' to attach visual assets, 'publish_post' to publish to connected channels, 'delete_post' to delete a post or clear all drafts.",
             },
           ],
           requestBody: {
