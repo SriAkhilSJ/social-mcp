@@ -11,7 +11,8 @@
     "inngest:dev": "npx inngest-cli@latest dev -u http://localhost:3000/api/inngest",
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "test": "tsx --env-file=.env.local --conditions=react-server --test tests/mcp-foundation.test.ts tests/mcp-workflow.test.ts"
   },
   "dependencies": {
     "@e2b/desktop": "^2.5.0",

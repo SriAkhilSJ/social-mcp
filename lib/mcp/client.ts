@@ -757,6 +757,15 @@ export async function syncCampaignAnalyticsViaMcp(
         });
 
         for (const fp of fbPosts) {
+          const snapshot = {
+            timestamp: new Date().toISOString(),
+            likes: fp.likes,
+            comments: fp.comments,
+            shares: fp.shares,
+            views: fp.views ?? null,
+            insights: fp.insights || null,
+          };
+
           await db
             .insert(postAnalytics)
             .values({
@@ -772,6 +781,8 @@ export async function syncCampaignAnalyticsViaMcp(
               comments: fp.comments,
               shares: fp.shares,
               views: fp.views ?? null,
+              metricsHistory: [snapshot],
+              rawMetrics: (fp.rawMetrics as any) || null,
               metricsFetchedAt: new Date(),
               syncedAt: new Date(),
             })
@@ -782,6 +793,7 @@ export async function syncCampaignAnalyticsViaMcp(
                 comments: fp.comments,
                 shares: fp.shares,
                 views: fp.views ?? null,
+                rawMetrics: (fp.rawMetrics as any) || null,
                 metricsFetchedAt: new Date(),
                 syncedAt: new Date(),
               },

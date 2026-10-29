@@ -146,7 +146,7 @@ export async function GET(req: Request) {
           status: "published",
           platforms: ["facebook"],
           publishedAt: r.postedAt,
-          views: r.views || (Number(r.likes) || 0) * 15,
+          views: r.views ?? null,
           likes: r.likes || 0,
           comments: r.comments || 0,
           shares: r.shares || 0,
