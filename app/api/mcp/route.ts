@@ -14,7 +14,7 @@ import {
 import { eq, desc, and, isNull } from "drizzle-orm";
 import { getRequestScope } from "@/lib/request-scope";
 import { getOrBootstrapWorkspaceUser } from "@/lib/auth";
-import { dispatchPostViaMcp } from "@/lib/mcp/client";
+import { dispatchPostViaMcp, getUserConnectedAccounts } from "@/lib/mcp/client";
 import {
   getVideoEngineMode,
   setVideoEngineMode,
@@ -970,8 +970,11 @@ export async function POST(req: Request) {
       );
     }
 
-    // F. LIST WORKSPACES
+    // F. LIST WORKSPACES & CONNECTED CHANNELS
     if (toolName === "list_workspaces" || toolName === "openpost_list_workspaces") {
+      const connData = await getUserConnectedAccounts(scope.userId);
+      const connectedAccounts = connData.accounts || [];
+
       return NextResponse.json(
         {
           jsonrpc: "2.0",
@@ -982,15 +985,25 @@ export async function POST(req: Request) {
                 type: "text",
                 text: JSON.stringify(
                   {
-                    workspaces: [
-                      {
-                        id: scope.campaignId,
-                        name: scope.campaign.name,
-                        slug: "anime-social-campaign",
-                        active: true,
-                        channels: ["facebook", "instagram", "tiktok", "youtube"],
-                      },
-                    ],
+                    workspace: {
+                      id: scope.campaignId,
+                      name: scope.campaign.name,
+                    },
+                    connectedAccounts: connectedAccounts.length > 0
+                      ? connectedAccounts.map((a) => ({
+                          platform: a.platform,
+                          name: a.name,
+                          username: a.username,
+                          id: a.id,
+                          status: a.status,
+                        }))
+                      : [
+                          {
+                            platform: "facebook",
+                            status: "needs_token",
+                            message: "Connect your Facebook Page Access Token to see and publish to your real Facebook Page.",
+                          },
+                        ],
                   },
                   null,
                   2
