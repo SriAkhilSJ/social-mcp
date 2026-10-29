@@ -363,10 +363,23 @@ declare global {
 async function initDatabase(): Promise<AppDb> {
   const databaseUrl = process.env.DATABASE_URL?.trim();
   if (databaseUrl) {
-    const client = postgres(databaseUrl, { max: 10, idle_timeout: 30 });
-    const db = drizzlePg(client, { schema });
-    await client.unsafe(BOOTSTRAP_SQL);
-    return db;
+    try {
+      const useSsl =
+        databaseUrl.includes("render.com") ||
+        databaseUrl.includes("dpg-") ||
+        databaseUrl.includes("sslmode=require") ||
+        process.env.NODE_ENV === "production";
+      const client = postgres(databaseUrl, {
+        max: 10,
+        idle_timeout: 30,
+        ssl: useSsl ? { rejectUnauthorized: false } : undefined,
+      });
+      const db = drizzlePg(client, { schema });
+      await client.unsafe(BOOTSTRAP_SQL);
+      return db;
+    } catch (pgErr) {
+      console.warn("[Database] Remote Postgres connection/bootstrap failed, falling back to PGlite:", pgErr);
+    }
   }
 
   const dataDir = path.join(process.cwd(), ".data", "pgdata");
