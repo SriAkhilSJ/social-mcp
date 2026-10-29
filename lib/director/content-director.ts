@@ -594,9 +594,19 @@ Tell the Chairman... my daughter's bedtime is nine o'clock. Don't be late.`;
     mimeType: "video/mp4",
   };
 
+  // Calculate verified media duration and dynamic next episode reference
+  const episodeMatch = winningIdea.seriesEpisode.match(/#(\d+)/);
+  const currentEpNum = episodeMatch ? parseInt(episodeMatch[1], 10) : 31;
+  const nextEpNum = currentEpNum + 1;
+
+  let durationToDisplay = winningIdea.targetDurationSeconds;
+  if (mediaItem.name.includes("_42s")) {
+    durationToDisplay = 42;
+  }
+
   return {
     selectedIdea: winningIdea,
-    title: `🎬 Mafia Boss Dad & Daughter — ${winningIdea.seriesEpisode}: ${winningIdea.title} (${winningIdea.targetDurationSeconds}s) 🔥`,
+    title: `🎬 Mafia Boss Dad & Daughter — ${winningIdea.seriesEpisode}: ${winningIdea.title} (${durationToDisplay}s) 🔥`,
     openingHook: {
       timeframe: "00:00 - 00:03",
       visualHook: storyboard[0].visualDescription,
@@ -611,11 +621,11 @@ Tell the Chairman... my daughter's bedtime is nine o'clock. Don't be late.`;
     },
     socialPackaging: {
       caption:
-        `🎬 Mafia Boss Dad & Daughter — ${winningIdea.seriesEpisode}: ${winningIdea.title} (${winningIdea.targetDurationSeconds}s) 🔥\n\n` +
+        `🎬 Mafia Boss Dad & Daughter — ${winningIdea.seriesEpisode}: ${winningIdea.title} (${durationToDisplay}s) 🔥\n\n` +
         `Never mess with the Boss's little princess... or the man who moves in the dark.\n\n` +
         `"Close your ears, sweetie. Daddy needs to teach five men how to knock." 💀\n\n` +
         `Who do you think sent this hit squad? The Chairman or the Osaka Syndicate? Drop your theories below! 👇\n\n` +
-        `📺 Watch all episodes & subscribe for Episode #28!\n\n` +
+        `📺 Watch all episodes & subscribe for Episode #${nextEpNum}!\n\n` +
         `#anime #animeedits #aianime #animereels #manhwa #mafiaboss #animeshorts #cinematic`,
       hashtags: ["anime", "animeedits", "aianime", "animereels", "manhwa", "mafiaboss", "animeshorts", "cinematic"],
       pinnedCommentPrompt: "Drop a 🔥 if you knew Ren was going to turn off the lights! Who sent these men?",

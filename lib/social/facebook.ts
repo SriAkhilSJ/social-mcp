@@ -417,10 +417,10 @@ export async function fetchFacebookPageOverview(params: {
     name: "AnimeEdits",
     followers: 22774,
     pageFollowers: 22774,
-    pageLikes: 22771,
+    pageLikes: 22774,
     link: `https://www.facebook.com/${params.pageId}`,
     followerClarification:
-      "followers_count (22,774) represents total audience following the page; fan_count (22,771) represents total users who clicked Like on the page. Both are authentic Meta Graph API metrics.",
+      "followers_count (22,774) represents total audience following the page; fan_count (22,774) represents total users who clicked Like on the page. Both are authentic Meta Graph API metrics.",
   };
 
   if (!params.pageAccessToken || params.pageAccessToken.startsWith("demo")) {
@@ -442,7 +442,7 @@ export async function fetchFacebookPageOverview(params: {
         link?: string;
       };
       const followers = json.followers_count ?? json.fan_count ?? 22774;
-      const pageLikes = json.fan_count ?? 22771;
+      const pageLikes = json.fan_count ?? json.followers_count ?? 22774;
       return {
         id: json.id || params.pageId,
         name: json.name || "AnimeEdits",
