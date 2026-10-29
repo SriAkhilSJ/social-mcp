@@ -14,6 +14,13 @@ const nextConfig: NextConfig = {
     "postgres",
     "sharp",
   ],
+  webpack: (config) => {
+    config.resolve.alias = {
+      ...(config.resolve.alias || {}),
+      "@": path.resolve(__dirname),
+    };
+    return config;
+  },
   experimental: {
     webpackMemoryOptimizations: true,
     cpus: 1,
