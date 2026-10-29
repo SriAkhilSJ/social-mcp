@@ -1,3 +1,4 @@
+import { cookies } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { desc, eq } from "drizzle-orm";
@@ -16,16 +17,20 @@ import { getDb } from "@/db";
 import { campaigns } from "@/db/schema";
 
 export default async function LandingPage() {
-  const user = await getCurrentUser();
-  if (user) {
-    const db = await getDb();
-    const list = await db
-      .select()
-      .from(campaigns)
-      .where(eq(campaigns.userId, user.id))
-      .orderBy(desc(campaigns.createdAt))
-      .limit(1);
-    redirect(list.length > 0 ? "/dashboard" : "/create-campaign");
+  const cookieStore = await cookies();
+  const token = cookieStore.get("socialix_session")?.value;
+  if (token) {
+    const user = await getCurrentUser();
+    if (user) {
+      const db = await getDb();
+      const list = await db
+        .select()
+        .from(campaigns)
+        .where(eq(campaigns.userId, user.id))
+        .orderBy(desc(campaigns.createdAt))
+        .limit(1);
+      redirect(list.length > 0 ? "/dashboard" : "/create-campaign");
+    }
   }
 
   return (
