@@ -20,7 +20,13 @@ export async function GET(
 ) {
   const { filename } = await context.params;
   const safeName = path.basename(filename);
-  const fullPath = path.join(process.cwd(), ".data", "media", safeName);
+  let fullPath = path.join(process.cwd(), ".data", "media", safeName);
+  if (!fs.existsSync(fullPath)) {
+    fullPath = path.join(process.cwd(), "public", "media", safeName);
+  }
+  if (!fs.existsSync(fullPath)) {
+    fullPath = path.join(process.cwd(), ".next", "standalone", "public", "media", safeName);
+  }
 
   if (!fs.existsSync(fullPath)) {
     return new NextResponse("Not Found", { status: 404 });
