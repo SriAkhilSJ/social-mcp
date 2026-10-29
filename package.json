@@ -75,15 +75,15 @@
     "tailwind-merge": "^3.4.0",
     "tailwindcss": "^4.1.17",
     "tailwindcss-animate": "^1.0.7",
+    "typescript": "^5",
+    "@types/node": "^24",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
     "vaul": "^1.1.2",
     "zod": "^4.1.13"
   },
   "devDependencies": {
-    "@types/node": "^24",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
     "drizzle-kit": "^0.31.8",
-    "tsx": "^4.21.0",
-    "typescript": "^5"
+    "tsx": "^4.21.0"
   }
 }
