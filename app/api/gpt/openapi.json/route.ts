@@ -72,7 +72,7 @@ export async function GET(req: Request) {
           operationId: "executeAction",
           summary: "Create drafts, generate visual media, or safely publish posts",
           description:
-            "Call this whenever the user wants to prepare a post (action=draft_content), attach visuals (action=generate_media), or publish to their channel (action=publish_post with confirmed=true).",
+            "Call this whenever the user wants to prepare a post (action=draft_content), attach visuals (action=generate_media), publish to their channel (action=publish_post with confirmed=true), or delete/clear drafts (action=delete_post).",
           parameters: [
             {
               name: "action",
@@ -80,10 +80,10 @@ export async function GET(req: Request) {
               required: true,
               schema: {
                 type: "string",
-                enum: ["draft_content", "generate_media", "publish_post"],
+                enum: ["draft_content", "generate_media", "publish_post", "delete_post"],
               },
               description:
-                "Action: 'draft_content' to create a post draft, 'generate_media' to attach visual assets, 'publish_post' to publish to connected channels.",
+                "Action: 'draft_content' to create a post draft, 'generate_media' to attach visual assets, 'publish_post' to publish to connected channels, 'delete_post' to delete a post or clear all drafts.",
             },
           ],
           requestBody: {
@@ -116,7 +116,11 @@ export async function GET(req: Request) {
                     },
                     postId: {
                       type: "integer",
-                      description: "Post ID to publish (for publish_post).",
+                      description: "Post ID to publish or delete.",
+                    },
+                    all: {
+                      type: "boolean",
+                      description: "When action=delete_post, set true to clear all pending drafts.",
                     },
                     confirmed: {
                       type: "boolean",

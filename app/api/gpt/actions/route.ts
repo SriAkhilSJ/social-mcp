@@ -338,6 +338,56 @@ export async function POST(req: Request) {
     );
   }
 
+  // 4. DELETE POST / DRAFT
+  if (action === "delete_post" || action === "delete_draft") {
+    const postId = body.postId ? Number(body.postId) : (body.id ? Number(body.id) : undefined);
+    const deleteAllDrafts = Boolean(body.all || body.deleteAll);
+
+    if (deleteAllDrafts) {
+      const deleted = await db
+        .delete(posts)
+        .where(and(eq(posts.userId, scope.userId), eq(posts.status, "draft")))
+        .returning();
+
+      return NextResponse.json(
+        {
+          success: true,
+          deletedCount: deleted.length,
+          message: `Successfully cleared ${deleted.length} pending draft(s). Clean slate ready!`,
+        },
+        { headers: CORS_HEADERS }
+      );
+    }
+
+    if (!postId) {
+      return NextResponse.json(
+        { error: "postId is required to delete a post, or set all: true to clear all drafts" },
+        { status: 400, headers: CORS_HEADERS }
+      );
+    }
+
+    const [deleted] = await db
+      .delete(posts)
+      .where(and(eq(posts.id, postId), eq(posts.userId, scope.userId)))
+      .returning();
+
+    if (!deleted) {
+      return NextResponse.json(
+        { error: `Post #${postId} not found` },
+        { status: 404, headers: CORS_HEADERS }
+      );
+    }
+
+    return NextResponse.json(
+      {
+        success: true,
+        deletedId: deleted.id,
+        message: `Post #${postId} deleted successfully.`,
+      },
+      { headers: CORS_HEADERS }
+    );
+  }
+
   return NextResponse.json(
     { error: `Unknown action: ${action}` },
     { status: 400, headers: CORS_HEADERS }

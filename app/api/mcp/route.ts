@@ -494,6 +494,29 @@ export async function POST(req: Request) {
               description: "List available OpenPost workspaces and social channel connection status.",
               inputSchema: { type: "object", properties: {} },
             },
+            {
+              name: "delete_post",
+              description:
+                "Call to delete a post draft by postId, or clear all pending drafts by setting all: true.",
+              inputSchema: {
+                type: "object",
+                properties: {
+                  postId: { type: "number", description: "Post ID to delete" },
+                  all: { type: "boolean", description: "Set true to clear all pending drafts" },
+                },
+              },
+            },
+            {
+              name: "openpost_delete_post",
+              description: "Alias for delete_post.",
+              inputSchema: {
+                type: "object",
+                properties: {
+                  postId: { type: "number" },
+                  all: { type: "boolean" },
+                },
+              },
+            },
 
             // Prefixed Aliases for Full Compatibility
             {
@@ -962,6 +985,94 @@ export async function POST(req: Request) {
               {
                 type: "text",
                 text: `Video generation mode set to: "${newMode}". Option 1 (coding_agent) bypasses Flow.`,
+              },
+            ],
+          },
+        },
+        { headers: CORS_HEADERS }
+      );
+    }
+
+    // I. DELETE POST / DRAFT
+    if (toolName === "delete_post" || toolName === "openpost_delete_post") {
+      const postId = args.postId ? Number(args.postId) : (args.id ? Number(args.id) : undefined);
+      const deleteAll = Boolean(args.all || args.deleteAll);
+
+      if (deleteAll) {
+        const deleted = await db
+          .delete(posts)
+          .where(and(eq(posts.userId, scope.userId), eq(posts.status, "draft")))
+          .returning();
+
+        return NextResponse.json(
+          {
+            jsonrpc: "2.0",
+            id,
+            result: {
+              content: [
+                {
+                  type: "text",
+                  text: JSON.stringify(
+                    {
+                      success: true,
+                      deletedCount: deleted.length,
+                      message: `Successfully deleted ${deleted.length} pending draft(s). Clean slate ready!`,
+                    },
+                    null,
+                    2
+                  ),
+                },
+              ],
+            },
+          },
+          { headers: CORS_HEADERS }
+        );
+      }
+
+      if (!postId) {
+        return NextResponse.json(
+          {
+            jsonrpc: "2.0",
+            id,
+            error: { code: -32602, message: "postId is required to delete a post, or set all: true to clear all drafts" },
+          },
+          { headers: CORS_HEADERS }
+        );
+      }
+
+      const [deleted] = await db
+        .delete(posts)
+        .where(and(eq(posts.id, postId), eq(posts.userId, scope.userId)))
+        .returning();
+
+      if (!deleted) {
+        return NextResponse.json(
+          {
+            jsonrpc: "2.0",
+            id,
+            error: { code: -32602, message: `Post #${postId} not found` },
+          },
+          { headers: CORS_HEADERS }
+        );
+      }
+
+      return NextResponse.json(
+        {
+          jsonrpc: "2.0",
+          id,
+          result: {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify(
+                  {
+                    success: true,
+                    deletedId: deleted.id,
+                    message: `Post #${postId} deleted successfully.`,
+                  },
+                  null,
+                  2
+                ),
               },
             ],
           },
