@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getDb } from "@/db";
 import {
   posts,
+  postAnalytics,
   contentDrafts,
   agentTasks,
   agentPlans,
@@ -877,8 +878,19 @@ export async function POST(req: Request) {
         .where(eq(posts.userId, scope.userId));
 
       const totalPosts = allPosts.length;
-      const published = allPosts.filter((p) => p.status === "published" || p.status === "scheduled").length;
+      const published = allPosts.filter((p) => p.status === "published").length;
+      const scheduled = allPosts.filter((p) => p.status === "scheduled").length;
       const drafts = allPosts.filter((p) => p.status === "draft").length;
+
+      // Real analytics from database
+      const analyticsRows = await db
+        .select()
+        .from(postAnalytics)
+        .where(eq(postAnalytics.userId, scope.userId));
+
+      const realViews = analyticsRows.reduce((sum, r) => sum + (Number(r.views) || 0), 0);
+      const realLikes = analyticsRows.reduce((sum, r) => sum + (Number(r.likes) || 0), 0);
+      const realComments = analyticsRows.reduce((sum, r) => sum + (Number(r.comments) || 0), 0);
 
       return NextResponse.json(
         {
@@ -890,14 +902,19 @@ export async function POST(req: Request) {
                 type: "text",
                 text: JSON.stringify(
                   {
-                    channel: "AnimeEdits / Social Media Hub",
+                    channel: scope.campaign.name || "Connected Social Channels",
+                    platforms: ["facebook", "instagram", "tiktok", "youtube"],
                     metrics: {
                       totalPosts,
                       publishedPosts: published,
+                      scheduledPosts: scheduled,
                       pendingDrafts: drafts,
-                      simulatedViews: published * 1420 + 3800,
-                      averageRetentionScore: "87.4%",
-                      topHookArchetype: "High-Stakes Moral Conflict / Syndicate Noir",
+                      realViews,
+                      realLikes,
+                      realComments,
+                      statusMessage: published > 0
+                        ? `${published} post(s) published with ${realViews} total views.`
+                        : "No posts published to market yet. Create and approve a draft to start publishing.",
                     },
                   },
                   null,
