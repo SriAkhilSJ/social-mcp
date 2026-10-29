@@ -272,17 +272,135 @@ export async function POST(req: Request) {
           capabilities: {
             tools: {},
             resources: {},
+            prompts: {},
           },
           serverInfo: {
             name: "openpost-social-mcp",
-            title: "OpenPost Social Media Controller MCP",
+            title: "OpenPost Autonomous Social Media Controller MCP",
             version: "2.0.0",
-            description: "Direct MCP connection for social campaigns, anime reel creation, and publication.",
+            description: "Direct MCP connection for social campaigns, post creation, analytics, and publication.",
           },
+          instructions:
+            "You are OpenPost, the user's autonomous AI Social Media Manager & Channel Director. You natively understand whatever topic, niche, or idea the user wants to talk about in chat without requiring complex prompts.\n- When the user talks about an idea or wants a post written, call create_post to draft it.\n- When the user wants visuals or scene prompts, call generate_media.\n- When the user asks about performance, views, or stats, call get_analytics.\n- When the user asks what posts or drafts exist, call list_posts.\n- When the user confirms approval (e.g., 'publish', 'post it', 'yes'), call publish_post with confirmed=true.\nAlways keep drafts in review first and show the user what was prepared.",
         },
       },
       { headers: CORS_HEADERS }
     );
+  }
+
+  // 1b. PROMPTS LIST
+  if (method === "prompts/list") {
+    return NextResponse.json(
+      {
+        jsonrpc: "2.0",
+        id,
+        result: {
+          prompts: [
+            {
+              name: "draft_post",
+              description: "Draft a high-retention social post on any topic with strong hooks and captions",
+              arguments: [
+                {
+                  name: "topic",
+                  description: "Topic, niche, or idea for the post",
+                  required: true,
+                },
+              ],
+            },
+            {
+              name: "channel_audit",
+              description: "Inspect live channel analytics, views, and retention scores",
+            },
+            {
+              name: "publish_draft",
+              description: "Publish an approved post draft to your live channel",
+              arguments: [
+                {
+                  name: "postId",
+                  description: "Post ID to publish",
+                  required: true,
+                },
+              ],
+            },
+          ],
+        },
+      },
+      { headers: CORS_HEADERS }
+    );
+  }
+
+  // 1c. PROMPTS GET
+  if (method === "prompts/get") {
+    const promptName = String(params.name || "");
+    const promptArgs = (params.arguments || {}) as Record<string, string>;
+
+    if (promptName === "draft_post") {
+      const topic = promptArgs.topic || "tech and innovation";
+      return NextResponse.json(
+        {
+          jsonrpc: "2.0",
+          id,
+          result: {
+            description: `Draft post about ${topic}`,
+            messages: [
+              {
+                role: "user",
+                content: {
+                  type: "text",
+                  text: `Please draft a high-engagement social media post about ${topic}. Include a 3-second opening hook, narrative body, hashtags, and save it as a draft using create_post.`,
+                },
+              },
+            ],
+          },
+        },
+        { headers: CORS_HEADERS }
+      );
+    }
+
+    if (promptName === "channel_audit") {
+      return NextResponse.json(
+        {
+          jsonrpc: "2.0",
+          id,
+          result: {
+            description: "Channel analytics audit",
+            messages: [
+              {
+                role: "user",
+                content: {
+                  type: "text",
+                  text: "Please retrieve my latest channel analytics using get_analytics and summarize key metrics, view counts, and retention.",
+                },
+              },
+            ],
+          },
+        },
+        { headers: CORS_HEADERS }
+      );
+    }
+
+    if (promptName === "publish_draft") {
+      const postId = promptArgs.postId || "1";
+      return NextResponse.json(
+        {
+          jsonrpc: "2.0",
+          id,
+          result: {
+            description: `Publish draft #${postId}`,
+            messages: [
+              {
+                role: "user",
+                content: {
+                  type: "text",
+                  text: `I confirm and approve publication for post #${postId}. Please call publish_post with postId: ${postId} and confirmed: true.`,
+                },
+              },
+            ],
+          },
+        },
+        { headers: CORS_HEADERS }
+      );
+    }
   }
 
   // 2. TOOLS LIST
@@ -297,7 +415,7 @@ export async function POST(req: Request) {
             {
               name: "create_post",
               description:
-                "Create a draft social media post for connected channels (Facebook, Instagram, TikTok, YouTube, X). Kept in DRAFT mode until approved.",
+                "Call whenever the user wants to write, draft, schedule, or prepare a social media post, reel, caption, or video script for ANY topic (business, personal brand, tech, gaming, daily thoughts, reels, etc.). Automatically crafts the hook, caption, and hashtags, and saves as a draft.",
               inputSchema: {
                 type: "object",
                 required: ["title"],
@@ -322,7 +440,7 @@ export async function POST(req: Request) {
             {
               name: "publish_post",
               description:
-                "Publish a post to social media channels. Strictly requires human confirmation (confirmed: true) to ensure Human-in-the-Loop protection.",
+                "Call to publish an approved post to social media channels. Strictly requires the user to have clearly confirmed approval (e.g. 'Publish', 'Post it', 'Confirm') with confirmed: true.",
               inputSchema: {
                 type: "object",
                 required: ["postId", "confirmed"],
@@ -337,7 +455,8 @@ export async function POST(req: Request) {
             },
             {
               name: "generate_media",
-              description: "Generate anime reel scene, image, or vertical motion asset and attach to a draft post.",
+              description:
+                "Call to generate visual prompts, motion scenes, images, or 9:16 vertical video assets and attach to a draft post.",
               inputSchema: {
                 type: "object",
                 required: ["prompt"],
@@ -349,7 +468,8 @@ export async function POST(req: Request) {
             },
             {
               name: "get_analytics",
-              description: "Retrieve live analytics, reach, views, engagement, and retention scores for the campaign.",
+              description:
+                "Call whenever the user asks about channel performance, analytics, reach, views, engagement, retention, or stats.",
               inputSchema: {
                 type: "object",
                 properties: {
@@ -359,7 +479,8 @@ export async function POST(req: Request) {
             },
             {
               name: "list_posts",
-              description: "List scheduled, published, and pending draft posts in the campaign.",
+              description:
+                "Call whenever the user asks to see their drafts, scheduled posts, or review queue.",
               inputSchema: {
                 type: "object",
                 properties: {

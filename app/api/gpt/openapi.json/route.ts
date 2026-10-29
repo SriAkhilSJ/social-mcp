@@ -13,22 +13,24 @@ export async function GET(req: Request) {
   const spec = {
     openapi: "3.1.0",
     info: {
-      title: "OpenPost Social Media Controller API",
+      title: "OpenPost Autonomous Social Media Agent",
       description:
-        "ChatGPT Action API for managing social media campaigns, creating viral anime video drafts, and publishing with human-in-the-loop protection.",
-      version: "1.0.0",
+        "OpenPost AI Channel Manager. Natively understands the user in normal chat about any topic. Creates post drafts (action=draft_content), inspects live channel analytics and views (action=analytics), checks drafts (action=list_drafts), generates visual media (action=generate_media), and safely publishes (action=publish_post, confirmed=true) after user approval.",
+      version: "2.0.0",
     },
     servers: [
       {
         url: serverUrl,
-        description: "OpenPost Host Server",
+        description: "OpenPost Production Cloud Server",
       },
     ],
     paths: {
       "/api/gpt/actions": {
         get: {
           operationId: "getActionsOrData",
-          summary: "Inspect drafts, social analytics, or system health",
+          summary: "Inspect channel analytics, pending drafts, or server health",
+          description:
+            "Call this whenever the user asks about performance, views, stats, or wants to see their pending drafts and queue.",
           parameters: [
             {
               name: "action",
@@ -39,7 +41,8 @@ export async function GET(req: Request) {
                 enum: ["status", "list_drafts", "analytics"],
                 default: "status",
               },
-              description: "Action to perform: 'list_drafts' to view pending review items, 'analytics' for metrics, 'status' for health.",
+              description:
+                "Action to perform: 'analytics' for view counts & metrics, 'list_drafts' to view pending review items, 'status' for system health.",
             },
             {
               name: "limit",
@@ -67,7 +70,9 @@ export async function GET(req: Request) {
         },
         post: {
           operationId: "executeAction",
-          summary: "Create drafts, generate video media, or safely publish posts",
+          summary: "Create drafts, generate visual media, or safely publish posts",
+          description:
+            "Call this whenever the user wants to prepare a post (action=draft_content), attach visuals (action=generate_media), or publish to their channel (action=publish_post with confirmed=true).",
           parameters: [
             {
               name: "action",
@@ -77,7 +82,8 @@ export async function GET(req: Request) {
                 type: "string",
                 enum: ["draft_content", "generate_media", "publish_post"],
               },
-              description: "Action: 'draft_content' to create a post draft, 'generate_media' to create visual video asset, 'publish_post' to publish.",
+              description:
+                "Action: 'draft_content' to create a post draft, 'generate_media' to attach visual assets, 'publish_post' to publish to connected channels.",
             },
           ],
           requestBody: {
@@ -89,7 +95,7 @@ export async function GET(req: Request) {
                   properties: {
                     title: {
                       type: "string",
-                      description: "Title or topic of the social post.",
+                      description: "Title, topic, or headline of the social post.",
                     },
                     caption: {
                       type: "string",
@@ -115,7 +121,7 @@ export async function GET(req: Request) {
                     confirmed: {
                       type: "boolean",
                       description:
-                        "CRITICAL HUMAN CONFIRMATION: Must be explicitly true to publish. If false or omitted, publishing is blocked by the human-in-the-loop lock.",
+                        "HUMAN-IN-THE-LOOP SAFETY: Must be explicitly true to publish. Only set true when the user clearly approved publishing.",
                     },
                   },
                 },
@@ -134,7 +140,7 @@ export async function GET(req: Request) {
               },
             },
             "403": {
-              description: "Blocked by Human-in-the-Loop protection when confirmed is not true.",
+              description: "Blocked by Human-in-the-Loop protection when confirmed is false.",
             },
           },
         },
