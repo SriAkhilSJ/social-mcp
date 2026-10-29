@@ -19,6 +19,8 @@ import { dispatchPostViaMcp, getUserConnectedAccounts } from "@/lib/mcp/client";
 import { decryptSecret } from "@/lib/crypto/secrets";
 import { fetchFacebookPageAnalytics, fetchFacebookPageOverview } from "@/lib/social/facebook";
 import { executeContentDirectorCycle } from "@/lib/director/content-director";
+import { synthesizeCharacterVoice } from "@/lib/audio/chatterbox";
+import { optimizePostWithOpenSeo } from "@/lib/seo/openseo";
 import {
   getVideoEngineMode,
   setVideoEngineMode,
@@ -654,6 +656,88 @@ export async function POST(req: Request) {
                 type: "object",
                 properties: {
                   idempotencyKey: { type: "string" },
+                },
+              },
+            },
+            {
+              name: "chatterbox_synthesize_voice",
+              description:
+                "Synthesize character voice dialogue lines using the Chatterbox zero-shot voice cloning engine for Ren Kurokawa, Hana, or the Syndicate Captain.",
+              inputSchema: {
+                type: "object",
+                required: ["dialogueText"],
+                properties: {
+                  dialogueText: {
+                    type: "string",
+                    description: "The line of dialogue to synthesize",
+                  },
+                  characterId: {
+                    type: "string",
+                    enum: ["ren_kurokawa", "hana_kurokawa", "cartel_captain", "narrator"],
+                    description: "Character voice profile to use (default: ren_kurokawa)",
+                  },
+                  draftId: {
+                    type: "number",
+                    description: "Optional post/draft ID to automatically attach the synthesized audio to",
+                  },
+                  emotion: {
+                    type: "string",
+                    enum: ["calm", "whisper", "intense", "gentle"],
+                    description: "Emotional delivery tone",
+                  },
+                },
+              },
+            },
+            {
+              name: "openpost_chatterbox_voice",
+              description: "Alias for chatterbox_synthesize_voice.",
+              inputSchema: {
+                type: "object",
+                required: ["dialogueText"],
+                properties: {
+                  dialogueText: { type: "string" },
+                  characterId: { type: "string" },
+                  draftId: { type: "number" },
+                  emotion: { type: "string" },
+                },
+              },
+            },
+            {
+              name: "openseo_optimize_post",
+              description:
+                "Optimize reel titles, captions, keyword density, and tiered hashtag structures for maximum algorithmic reach using OpenSEO.",
+              inputSchema: {
+                type: "object",
+                properties: {
+                  draftId: {
+                    type: "number",
+                    description: "Draft ID to analyze and optionally optimize",
+                  },
+                  currentTitle: {
+                    type: "string",
+                    description: "Title to evaluate if not specifying draftId",
+                  },
+                  currentCaption: {
+                    type: "string",
+                    description: "Caption to evaluate if not specifying draftId",
+                  },
+                  autoApply: {
+                    type: "boolean",
+                    description: "Whether to automatically update the draft with the optimized title and caption",
+                  },
+                },
+              },
+            },
+            {
+              name: "openpost_openseo_optimize",
+              description: "Alias for openseo_optimize_post.",
+              inputSchema: {
+                type: "object",
+                properties: {
+                  draftId: { type: "number" },
+                  currentTitle: { type: "string" },
+                  currentCaption: { type: "string" },
+                  autoApply: { type: "boolean" },
                 },
               },
             },
@@ -1519,6 +1603,102 @@ export async function POST(req: Request) {
             jsonrpc: "2.0",
             id,
             error: { code: -32000, message: err.message || "Content Director cycle failed" },
+          },
+          { headers: CORS_HEADERS }
+        );
+      }
+    }
+
+    // L. CHATTERBOX VOICE SYNTHESIS
+    if (toolName === "chatterbox_synthesize_voice" || toolName === "openpost_chatterbox_voice") {
+      try {
+        const dialogueText = String(args.dialogueText || "").trim();
+        if (!dialogueText) {
+          return NextResponse.json(
+            {
+              jsonrpc: "2.0",
+              id,
+              error: { code: -32602, message: "dialogueText is required" },
+            },
+            { headers: CORS_HEADERS }
+          );
+        }
+
+        const draftId = args.draftId ? Number(args.draftId) : undefined;
+        const characterId = args.characterId ? String(args.characterId) : "ren_kurokawa";
+        const emotion = (args.emotion as any) || "calm";
+
+        const voiceResult = await synthesizeCharacterVoice({
+          dialogueText,
+          characterId,
+          draftId,
+          userId: scope.userId,
+          emotion,
+        });
+
+        return NextResponse.json(
+          {
+            jsonrpc: "2.0",
+            id,
+            result: {
+              content: [
+                {
+                  type: "text",
+                  text: JSON.stringify(voiceResult, null, 2),
+                },
+              ],
+            },
+          },
+          { headers: CORS_HEADERS }
+        );
+      } catch (err: any) {
+        return NextResponse.json(
+          {
+            jsonrpc: "2.0",
+            id,
+            error: { code: -32000, message: err.message || "Chatterbox synthesis failed" },
+          },
+          { headers: CORS_HEADERS }
+        );
+      }
+    }
+
+    // M. OPENSEO OPTIMIZE POST
+    if (toolName === "openseo_optimize_post" || toolName === "openpost_openseo_optimize") {
+      try {
+        const draftId = args.draftId ? Number(args.draftId) : undefined;
+        const currentTitle = args.currentTitle ? String(args.currentTitle) : undefined;
+        const currentCaption = args.currentCaption ? String(args.currentCaption) : undefined;
+        const autoApply = Boolean(args.autoApply);
+
+        const seoResult = await optimizePostWithOpenSeo({
+          draftId,
+          currentTitle,
+          currentCaption,
+          autoApply,
+        });
+
+        return NextResponse.json(
+          {
+            jsonrpc: "2.0",
+            id,
+            result: {
+              content: [
+                {
+                  type: "text",
+                  text: JSON.stringify(seoResult, null, 2),
+                },
+              ],
+            },
+          },
+          { headers: CORS_HEADERS }
+        );
+      } catch (err: any) {
+        return NextResponse.json(
+          {
+            jsonrpc: "2.0",
+            id,
+            error: { code: -32000, message: err.message || "OpenSEO optimization failed" },
           },
           { headers: CORS_HEADERS }
         );
