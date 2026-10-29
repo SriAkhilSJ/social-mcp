@@ -5,7 +5,7 @@ import { posts, contentDrafts, users, campaigns, postAnalytics, userIntegrations
 import { getRequestScope } from "@/lib/request-scope";
 import { dispatchPostViaMcp } from "@/lib/mcp/client";
 import { decryptSecret } from "@/lib/crypto/secrets";
-import { fetchFacebookPageAnalytics } from "@/lib/social/facebook";
+import { fetchFacebookPageAnalytics, fetchFacebookPageOverview } from "@/lib/social/facebook";
 import fs from "fs";
 import path from "path";
 

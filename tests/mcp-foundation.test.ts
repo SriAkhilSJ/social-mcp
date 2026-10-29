@@ -236,7 +236,7 @@ describe("Phase 4: OpenPost MCP & Analytics Unit Tests (Mocked)", () => {
 
     const publishTool = registeredTools.find((t) => t.name === "publish_post");
     assert.ok(publishTool);
-    assert.ok(publishTool?.required.includes("confirmed"));
+    assert.ok(publishTool?.required?.includes("confirmed"));
 
     const analyticsTool = registeredTools.find((t) => t.name === "get_analytics");
     assert.ok(analyticsTool);

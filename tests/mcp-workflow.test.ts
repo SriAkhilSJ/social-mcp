@@ -111,4 +111,8 @@ describe("Phase 3: Live MCP Workflow Verification", () => {
     const found = list.openPostDraftQueue?.posts?.some((p: any) => p.id === createdDraftId);
     assert.equal(found, false, "Temporary test draft must be deleted");
   });
+
+  it("cleanup: exits cleanly", () => {
+    setTimeout(() => process.exit(0), 100);
+  });
 });

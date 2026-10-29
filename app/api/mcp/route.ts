@@ -18,6 +18,7 @@ import { getOrBootstrapWorkspaceUser } from "@/lib/auth";
 import { dispatchPostViaMcp, getUserConnectedAccounts } from "@/lib/mcp/client";
 import { decryptSecret } from "@/lib/crypto/secrets";
 import { fetchFacebookPageAnalytics, fetchFacebookPageOverview } from "@/lib/social/facebook";
+import { executeContentDirectorCycle } from "@/lib/director/content-director";
 import {
   getVideoEngineMode,
   setVideoEngineMode,
@@ -629,6 +630,30 @@ export async function POST(req: Request) {
                 required: ["mode"],
                 properties: {
                   mode: { type: "string", enum: ["coding_agent", "flow_path"] },
+                },
+              },
+            },
+            {
+              name: "content_director_cycle",
+              description:
+                "Execute the autonomous Content Director cycle for AnimeEdits. Analyzes live Facebook performance, generates and ranks 10 Reel ideas, builds complete directorial storyboard & Veo 3.1 prompts for the #1 idea, attaches verified media, and saves strictly as a draft.",
+              inputSchema: {
+                type: "object",
+                properties: {
+                  idempotencyKey: {
+                    type: "string",
+                    description: "Optional unique idempotency key to prevent duplicate runs",
+                  },
+                },
+              },
+            },
+            {
+              name: "openpost_content_director",
+              description: "Alias for content_director_cycle.",
+              inputSchema: {
+                type: "object",
+                properties: {
+                  idempotencyKey: { type: "string" },
                 },
               },
             },
@@ -1462,6 +1487,42 @@ export async function POST(req: Request) {
         },
         { headers: CORS_HEADERS }
       );
+    }
+
+    // K. CONTENT DIRECTOR CYCLE
+    if (toolName === "content_director_cycle" || toolName === "openpost_content_director") {
+      try {
+        const result = await executeContentDirectorCycle({
+          userId: scope.userId,
+          campaignId: scope.campaignId,
+          idempotencyKey: args.idempotencyKey ? String(args.idempotencyKey) : undefined,
+        });
+
+        return NextResponse.json(
+          {
+            jsonrpc: "2.0",
+            id,
+            result: {
+              content: [
+                {
+                  type: "text",
+                  text: JSON.stringify(result, null, 2),
+                },
+              ],
+            },
+          },
+          { headers: CORS_HEADERS }
+        );
+      } catch (err: any) {
+        return NextResponse.json(
+          {
+            jsonrpc: "2.0",
+            id,
+            error: { code: -32000, message: err.message || "Content Director cycle failed" },
+          },
+          { headers: CORS_HEADERS }
+        );
+      }
     }
 
     return NextResponse.json(
