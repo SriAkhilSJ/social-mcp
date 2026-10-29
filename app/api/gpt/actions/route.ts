@@ -69,6 +69,20 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const action = url.searchParams.get("action") || "status";
 
+  // Fast-path healthcheck for Render & ChatGPT Action discovery
+  if (action === "status") {
+    return NextResponse.json(
+      {
+        status: "online",
+        name: "OpenPost ChatGPT Action Bridge",
+        version: "2.0.0",
+        workspace: "Anime & Social Media Campaign",
+        humanInTheLoopLock: "ENFORCED (Draft-First)",
+      },
+      { headers: CORS_HEADERS }
+    );
+  }
+
   const scope = await resolveScope();
   if (!scope) {
     return NextResponse.json(

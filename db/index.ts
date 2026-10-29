@@ -395,8 +395,14 @@ async function initDatabase(): Promise<AppDb> {
       fs.rmSync(dataDir, { recursive: true, force: true });
     }
     fs.mkdirSync(dataDir, { recursive: true });
-    pg = new PGlite(dataDir);
-    await pg.waitReady;
+    try {
+      pg = new PGlite(dataDir);
+      await pg.waitReady;
+    } catch (fallbackErr) {
+      console.warn('[Database] Using in-memory PGlite fallback:', fallbackErr);
+      pg = new PGlite();
+      await pg.waitReady;
+    }
   }
 
   await pg.exec(BOOTSTRAP_SQL);
