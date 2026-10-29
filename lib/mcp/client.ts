@@ -427,6 +427,7 @@ export async function getUserConnectedAccounts(userId: string): Promise<{
         provider: "gemini",
         keyHint: `Live (env: ••••${geminiKey.slice(-4)})`,
         endpointUrl: null,
+        model: "gemini-2.5-flash",
         accountsCount: 1,
         refreshedAt: new Date(),
       });
@@ -440,6 +441,7 @@ export async function getUserConnectedAccounts(userId: string): Promise<{
         provider: "openai",
         keyHint: `Live (env: ••••${openAiKey.slice(-4)})`,
         endpointUrl: null,
+        model: "gpt-4o",
         accountsCount: 1,
         refreshedAt: new Date(),
       });
@@ -453,6 +455,7 @@ export async function getUserConnectedAccounts(userId: string): Promise<{
         provider: "openpost",
         keyHint: `Live (env: ••••${opToken.slice(-4)})`,
         endpointUrl: process.env.OPENPOST_MCP_URL?.trim() || "http://localhost:8080/mcp",
+        model: null,
         accountsCount: 1,
         refreshedAt: new Date(),
       });

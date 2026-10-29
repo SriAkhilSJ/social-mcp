@@ -12,6 +12,7 @@ import {
   campaigns,
   contentDrafts,
   posts,
+  postAnalytics,
   researchFindings,
   type PostMediaItem,
 } from "@/db/schema";

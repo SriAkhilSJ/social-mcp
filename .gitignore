@@ -54,3 +54,6 @@ next-env.d.ts
 openpost/data/
 openpost/.env
 flow-mcp-runtime/
+scratch/
+public/media/audio/
+public/media/agnes_character_portrait_*

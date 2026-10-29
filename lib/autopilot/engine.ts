@@ -186,6 +186,7 @@ export async function executeAutopilotCycle(params: {
     try {
       const topTrend = trends[0];
       await db.insert(campaignMemories).values({
+        userId: params.userId,
         campaignId: params.campaignId,
         agentId: "research",
         kind: "learning",

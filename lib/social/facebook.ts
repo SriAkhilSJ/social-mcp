@@ -276,7 +276,7 @@ export async function publishToFacebookGraph(params: {
 
     if (localFileBuffer) {
       const fd = new FormData();
-      fd.append("source", new Blob([localFileBuffer]), fileName);
+      fd.append("source", new Blob([new Uint8Array(localFileBuffer)]), fileName);
       fd.append("caption", params.text);
       fd.append("access_token", params.pageAccessToken);
       if (scheduledUnix) {

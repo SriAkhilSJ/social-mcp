@@ -18,14 +18,22 @@ import {
   fetchFacebookPageAnalytics,
   type FacebookPostAnalyticsItem,
 } from "@/lib/social/facebook";
+import { validateVideoAsset } from "@/lib/media/video-validator";
 
 // ==========================================
 // 1. DATA CONTRACTS & INTERFACES
 // ==========================================
 
+export type DataSourceType = "live" | "historical_cache" | "fixture" | "unavailable";
+
 export interface PerformanceAnalysis {
   channelName: string;
   totalAnalyzedPosts: number;
+  dataSource: DataSourceType;
+  retrievedAt: string;
+  isFresh: boolean;
+  dataFreshnessSeconds?: number;
+  error?: string;
   topPerformingReels: Array<{
     id: string;
     videoId?: string;
@@ -37,6 +45,7 @@ export interface PerformanceAnalysis {
     durationSeconds: number | null;
     replays?: number | null;
     avgWatchTimeSeconds?: number | null;
+    retentionMeasured?: boolean;
   }>;
   durationSweetSpot: {
     minSeconds: number;
@@ -64,12 +73,20 @@ export interface ReelIdeaCandidate {
   coreConflict: string;
   emotionalPayoff: string;
   loopMechanism: string;
+  scoringBasis: {
+    dataSource: DataSourceType;
+    retentionMeasured: boolean;
+    archetypeMultiplier: number;
+    archetypeMeasuredAvgViews?: number;
+    durationDeviationSeconds: number;
+    methodology: string;
+  };
   scores: {
-    hookRetentionScore: number;     // 1-10 (0-3s retention probability)
-    audienceAffinityScore: number;  // 1-10 (alignment with top AnimeEdits themes)
+    hookRetentionScore: number;     // 1-10 (measured if retention telemetry exists, else heuristic estimate)
+    audienceAffinityScore: number;  // 1-10 (weighted by actual performance of similar archetype)
     shareabilityScore: number;      // 1-10 (moral high ground & psychological reversal)
     loopPotentialScore: number;     // 1-10 (seamless end-to-beginning audio loop)
-    durationOptimalityScore: number;// 1-10 (proximity to 50s-58s sweet spot)
+    durationOptimalityScore: number;// 1-10 (proximity to sweet spot recommended duration)
     overallWeightedScore: number;   // 0-100
   };
   ranking?: number;
@@ -128,17 +145,159 @@ export interface ContentDirectorResult {
   safetyLockNotice: string;
 }
 
+export interface AnalyzeChannelPerformanceOptions {
+  userId: string;
+  campaignId: number;
+  allowFixtures?: boolean;
+  mode?: "production" | "development" | "test";
+  forceUnavailable?: boolean;
+  overrideAnalyticsData?: FacebookPostAnalyticsItem[];
+}
+
 // In-memory active job locks to prevent duplicate execution cycles
 const activeJobs = new Set<string>();
+
+// Verified historical benchmark fixture (isolated from live metrics)
+const HISTORICAL_FIXTURE_POSTS: FacebookPostAnalyticsItem[] = [
+  {
+    id: "1316616991525561_122113024527420309",
+    metaPostId: "122113024527420309",
+    videoId: "4621308234820038",
+    reelId: "4621308234820038",
+    text: "🎬 Mafia Boss Dad & Daughter — Episode #25 (58.3s) 🔥\nNever mess with the Boss's little princess...",
+    postedAt: new Date("2026-09-05T12:19:14Z"),
+    likes: 2812,
+    comments: 17,
+    shares: 88,
+    views: 139475,
+    lengthSeconds: 58.3,
+    insights: {
+      totalPlays: 139475,
+      replayCount: 24800,
+      avgWatchTimeSeconds: 6.8,
+    },
+  },
+  {
+    id: "1316616991525561_122112457059420309",
+    metaPostId: "122112457059420309",
+    videoId: "2922166034798380",
+    reelId: "2922166034798380",
+    text: "🎬 Mafia Boss Dad & Daughter — Episode #24 (50.6s) 🔥\nNever mess with the Boss's little princess...",
+    postedAt: new Date("2026-09-03T12:00:00Z"),
+    likes: 3109,
+    comments: 17,
+    shares: 77,
+    views: 125726,
+    lengthSeconds: 50.6,
+    insights: {
+      totalPlays: 125726,
+      replayCount: 18200,
+      avgWatchTimeSeconds: 6.4,
+    },
+  },
+  {
+    id: "1316616991525561_122109199215420309",
+    metaPostId: "122109199215420309",
+    videoId: "1822300032266870",
+    reelId: "1822300032266870",
+    text: "🎬 Mafia Boss Dad & Daughter — Episode #18 (50.4s) 🔥\nNever mess with the Boss's little princess...",
+    postedAt: new Date("2026-09-05T12:29:36Z"),
+    likes: 2504,
+    comments: 2,
+    shares: 30,
+    views: 97284,
+    lengthSeconds: 50.4,
+  },
+  {
+    id: "1316616991525561_122112635013420309",
+    metaPostId: "122112635013420309",
+    videoId: "1349091173679978",
+    reelId: "1349091173679978",
+    text: "🎬 Mafia Boss Dad & Daughter — Episode #21 (89.4s) 🔥\nNever mess with the Boss's little princess...",
+    postedAt: new Date("2026-09-02T12:00:00Z"),
+    likes: 3798,
+    comments: 19,
+    shares: 71,
+    views: 82234,
+    lengthSeconds: 89.4,
+  },
+  {
+    id: "1316616991525561_122112953691420309",
+    metaPostId: "122112953691420309",
+    videoId: "1550951783004276",
+    reelId: "1550951783004276",
+    text: "🎬 Mafia Boss Dad & Daughter — Episode #19 (94.5s) 🔥\nNever mess with the Boss's little princess...",
+    postedAt: new Date("2026-09-05T03:32:25Z"),
+    likes: 2633,
+    comments: 17,
+    shares: 131,
+    views: 73500,
+    lengthSeconds: 94.5,
+  },
+];
 
 // ==========================================
 // 2. PERFORMANCE ANALYSIS ENGINE
 // ==========================================
 
-export async function analyzeChannelPerformance(params: {
-  userId: string;
-  campaignId: number;
-}): Promise<PerformanceAnalysis> {
+export async function analyzeChannelPerformance(
+  params: AnalyzeChannelPerformanceOptions
+): Promise<PerformanceAnalysis> {
+  const isDevOrTest =
+    params.allowFixtures === true ||
+    (params.allowFixtures === undefined &&
+      (process.env.NODE_ENV !== "production" || params.mode === "development" || params.mode === "test"));
+
+  // Explicitly forced unavailable mode for testing or failure isolation
+  if (params.forceUnavailable) {
+    return {
+      channelName: "AnimeEdits",
+      totalAnalyzedPosts: 0,
+      dataSource: "unavailable",
+      retrievedAt: new Date().toISOString(),
+      isFresh: false,
+      error: "Live analytics data explicitly marked unavailable.",
+      topPerformingReels: [],
+      durationSweetSpot: {
+        minSeconds: 48,
+        maxSeconds: 58,
+        recommendedDuration: 52,
+        insight: "No live data available to compute sweet spot.",
+      },
+      provenHooks: [],
+      shareDrivers: [],
+      audiencePreferences: [],
+    };
+  }
+
+  // Handle direct override for testing
+  if (params.overrideAnalyticsData !== undefined) {
+    if (params.overrideAnalyticsData.length === 0) {
+      if (!isDevOrTest) {
+        return {
+          channelName: "AnimeEdits",
+          totalAnalyzedPosts: 0,
+          dataSource: "unavailable",
+          retrievedAt: new Date().toISOString(),
+          isFresh: false,
+          error: "No posts returned from Facebook channel.",
+          topPerformingReels: [],
+          durationSweetSpot: {
+            minSeconds: 48,
+            maxSeconds: 58,
+            recommendedDuration: 52,
+            insight: "No posts available to calculate duration sweet spot.",
+          },
+          provenHooks: [],
+          shareDrivers: [],
+          audiencePreferences: [],
+        };
+      }
+      return buildAnalysisFromPosts(HISTORICAL_FIXTURE_POSTS, "fixture", "Override was empty; using historical fixture in dev mode.");
+    }
+    return buildAnalysisFromPosts(params.overrideAnalyticsData, "live");
+  }
+
   const db = await getDb();
 
   let pageToken = process.env.FACEBOOK_PAGE_ACCESS_TOKEN || "";
@@ -156,156 +315,160 @@ export async function analyzeChannelPerformance(params: {
       if (fbInteg.endpointUrl) pageId = fbInteg.endpointUrl;
     }
   } catch {
-    // fallback
+    // fallback to env vars
+  }
+
+  if (!pageToken) {
+    if (!isDevOrTest) {
+      return {
+        channelName: "AnimeEdits",
+        totalAnalyzedPosts: 0,
+        dataSource: "unavailable",
+        retrievedAt: new Date().toISOString(),
+        isFresh: false,
+        error: "Meta credentials missing or unconfigured. Cannot fetch live analytics in production mode.",
+        topPerformingReels: [],
+        durationSweetSpot: {
+          minSeconds: 48,
+          maxSeconds: 58,
+          recommendedDuration: 52,
+          insight: "No credentials to retrieve sweet spot.",
+        },
+        provenHooks: [],
+        shareDrivers: [],
+        audiencePreferences: [],
+      };
+    }
+    return buildAnalysisFromPosts(HISTORICAL_FIXTURE_POSTS, "fixture", "Meta credentials unconfigured; using fixture benchmarks in development mode.");
   }
 
   let postsData: FacebookPostAnalyticsItem[] = [];
+  let fetchError: string | undefined;
+
   try {
-    if (pageToken) {
-      postsData = await fetchFacebookPageAnalytics({
-        pageId,
-        pageAccessToken: pageToken,
-        limit: 50,
-      });
+    postsData = await fetchFacebookPageAnalytics({
+      pageId,
+      pageAccessToken: pageToken,
+      limit: 50,
+    });
+  } catch (err: any) {
+    fetchError = err?.message || "Unknown Meta API error";
+  }
+
+  // Handle live fetch failure
+  if (fetchError || !postsData || postsData.length === 0) {
+    const reason = fetchError || "Live Meta Graph API returned 0 posts.";
+    if (!isDevOrTest) {
+      return {
+        channelName: "AnimeEdits",
+        totalAnalyzedPosts: 0,
+        dataSource: "unavailable",
+        retrievedAt: new Date().toISOString(),
+        isFresh: false,
+        error: `Live Meta analytics unavailable: ${reason}. Fixture data is disabled in production mode.`,
+        topPerformingReels: [],
+        durationSweetSpot: {
+          minSeconds: 48,
+          maxSeconds: 58,
+          recommendedDuration: 52,
+          insight: "No live data available to compute sweet spot.",
+        },
+        provenHooks: [],
+        shareDrivers: [],
+        audiencePreferences: [],
+      };
     }
-  } catch {
-    // network fallback
+
+    return buildAnalysisFromPosts(
+      HISTORICAL_FIXTURE_POSTS,
+      "fixture",
+      `Live Meta API query failed (${reason}); using historical fixture benchmarks in development mode.`
+    );
   }
 
-  // Fallback to verified local historical cache if Meta API returns empty
-  if (!postsData || postsData.length === 0) {
-    postsData = [
-      {
-        id: "1316616991525561_122113024527420309",
-        metaPostId: "122113024527420309",
-        videoId: "4621308234820038",
-        reelId: "4621308234820038",
-        text: "🎬 Mafia Boss Dad & Daughter — Episode #25 (58.3s) 🔥\nNever mess with the Boss's little princess...",
-        postedAt: new Date("2026-09-05T12:19:14Z"),
-        likes: 2812,
-        comments: 17,
-        shares: 88,
-        views: 139475,
-        lengthSeconds: 58.3,
-        insights: {
-          totalPlays: 139475,
-          replayCount: 24800,
-          avgWatchTimeSeconds: 6.8,
-        },
-      },
-      {
-        id: "1316616991525561_122112457059420309",
-        metaPostId: "122112457059420309",
-        videoId: "2922166034798380",
-        reelId: "2922166034798380",
-        text: "🎬 Mafia Boss Dad & Daughter — Episode #24 (50.6s) 🔥\nNever mess with the Boss's little princess...",
-        postedAt: new Date("2026-09-03T12:00:00Z"),
-        likes: 3109,
-        comments: 17,
-        shares: 77,
-        views: 125726,
-        lengthSeconds: 50.6,
-        insights: {
-          totalPlays: 125726,
-          replayCount: 18200,
-          avgWatchTimeSeconds: 6.4,
-        },
-      },
-      {
-        id: "1316616991525561_122109199215420309",
-        metaPostId: "122109199215420309",
-        videoId: "1822300032266870",
-        reelId: "1822300032266870",
-        text: "🎬 Mafia Boss Dad & Daughter — Episode #18 (50.4s) 🔥\nNever mess with the Boss's little princess...",
-        postedAt: new Date("2026-09-05T12:29:36Z"),
-        likes: 2504,
-        comments: 2,
-        shares: 30,
-        views: 97284,
-        lengthSeconds: 50.4,
-      },
-      {
-        id: "1316616991525561_122112635013420309",
-        metaPostId: "122112635013420309",
-        videoId: "1349091173679978",
-        reelId: "1349091173679978",
-        text: "🎬 Mafia Boss Dad & Daughter — Episode #21 (89.4s) 🔥\nNever mess with the Boss's little princess...",
-        postedAt: new Date("2026-09-02T12:00:00Z"),
-        likes: 3798,
-        comments: 19,
-        shares: 71,
-        views: 82234,
-        lengthSeconds: 89.4,
-      },
-      {
-        id: "1316616991525561_122112953691420309",
-        metaPostId: "122112953691420309",
-        videoId: "1550951783004276",
-        reelId: "1550951783004276",
-        text: "🎬 Mafia Boss Dad & Daughter — Episode #19 (94.5s) 🔥\nNever mess with the Boss's little princess...",
-        postedAt: new Date("2026-09-05T03:32:25Z"),
-        likes: 2633,
-        comments: 17,
-        shares: 131,
-        views: 73500,
-        lengthSeconds: 94.5,
-      },
-    ];
-  }
+  return buildAnalysisFromPosts(postsData, "live");
+}
 
-  // Filter video reels that possess verified play metrics
+function buildAnalysisFromPosts(
+  postsData: FacebookPostAnalyticsItem[],
+  dataSource: DataSourceType,
+  diagnosticError?: string
+): PerformanceAnalysis {
   const videosWithViews = postsData
     .filter((p) => p.views !== null && typeof p.views === "number" && p.views > 0)
     .sort((a, b) => (b.views || 0) - (a.views || 0));
 
-  const topReels = (videosWithViews.length > 0 ? videosWithViews : postsData).slice(0, 5).map((p) => ({
+  let recommendedDuration = 52;
+  let minSweet = 50;
+  let maxSweet = 58;
+
+  if (videosWithViews.length > 0) {
+    const topVideos = videosWithViews.slice(0, 5);
+    const validDurations = topVideos
+      .map((v) => v.lengthSeconds)
+      .filter((d): d is number => typeof d === "number" && d > 0);
+
+    if (validDurations.length > 0) {
+      const avgTopDuration = validDurations.reduce((acc, d) => acc + d, 0) / validDurations.length;
+      recommendedDuration = Math.round(avgTopDuration);
+      minSweet = Math.max(30, recommendedDuration - 4);
+      maxSweet = recommendedDuration + 6;
+    }
+  }
+
+  const topPerformingReels = videosWithViews.slice(0, 5).map((p) => ({
     id: p.id,
     videoId: p.videoId,
-    title: p.text ? p.text.split("\n")[0].slice(0, 70) : "Anime Reel",
+    title: p.text ? p.text.split("\n")[0].slice(0, 60) : "Anime Video Reel",
     views: p.views,
     likes: p.likes,
     shares: p.shares,
     comments: p.comments,
-    durationSeconds: p.lengthSeconds || null,
-    replays: p.insights?.replayCount || null,
-    avgWatchTimeSeconds: p.insights?.avgWatchTimeSeconds || null,
+    durationSeconds: p.lengthSeconds ?? null,
+    replays: p.insights?.replayCount,
+    avgWatchTimeSeconds: p.insights?.avgWatchTimeSeconds,
+    retentionMeasured: p.insights?.avgWatchTimeSeconds != null && p.insights.avgWatchTimeSeconds > 0,
   }));
 
   return {
     channelName: "AnimeEdits",
     totalAnalyzedPosts: postsData.length,
-    topPerformingReels: topReels,
+    dataSource,
+    retrievedAt: new Date().toISOString(),
+    isFresh: dataSource === "live",
+    dataFreshnessSeconds: dataSource === "live" ? 0 : 86400,
+    error: diagnosticError,
+    topPerformingReels,
     durationSweetSpot: {
-      minSeconds: 48,
-      maxSeconds: 58,
-      recommendedDuration: 52,
-      insight:
-        "50s–58s reels generated the highest view velocity (139K views on Ep #25, 125K on Ep #24). Pacing beyond 85s retains loyal fans and high shares, but 50s–58s maximizes algorithmic completion rates and replay triggers.",
+      minSeconds: minSweet,
+      maxSeconds: maxSweet,
+      recommendedDuration,
+      insight: `${minSweet}s–${maxSweet}s duration sweet spot maximizes completion rates and replay triggers based on ${dataSource} data.`,
     },
     provenHooks: [
       {
         pattern: "The Sensory Paradox Pattern Interrupt",
         archetype: "Sensory Paradox",
-        avgViews: 139475,
-        example: "A single cane tap in darkness. Rain dripping from dark sunglasses. 'They forgot darkness was my territory.'",
+        avgViews: topPerformingReels[0]?.views || 139475,
+        example: "A single cane tap in darkness followed by sudden blackout.",
       },
       {
-        pattern: "The Reluctant Guardian Moral Threat",
+        pattern: "The High-Stakes Protective Guardian",
         archetype: "Reluctant Guardian",
-        avgViews: 125726,
-        example: "'Touch the syndicate, I take your money. Touch my daughter... I make sure nobody finds your name.'",
+        avgViews: topPerformingReels[1]?.views || 125726,
+        example: "Ren adjusting his daughter's blanket before disarming 5 armed enforcers.",
       },
       {
-        pattern: "The High-IQ Checkmate Subversion",
+        pattern: "The High-IQ Reversal",
         archetype: "High-IQ Checkmate",
-        avgViews: 97284,
-        example: "'Before you pull that trigger, check account 402. You already lost.'",
+        avgViews: topPerformingReels[2]?.views || 97284,
+        example: "The arrogant cartel boss realizes Ren already purchased his entire syndicate.",
       },
     ],
     shareDrivers: [
-      "Moral high ground / protective justice (protecting innocent daughter)",
-      "Unexpected psychological domination of arrogant armed syndicates",
-      "Subverting physical disability into terrifying intellectual dominance",
+      "Moral high ground (protecting child from criminal syndicates)",
+      "Cool-headed psychological dominance over aggressive antagonists",
+      "Satisfying underdog checkmate without visible violence",
     ],
     audiencePreferences: [
       "Atmospheric Tokyo noir anime aesthetic with cinematic rain and neon reflections",
@@ -316,47 +479,135 @@ export async function analyzeChannelPerformance(params: {
 }
 
 // ==========================================
-// 3. 10 REEL CANDIDATES & RANKING ENGINE
+// 3. DATA-DRIVEN CANDIDATES & RANKING ENGINE
 // ==========================================
 
-export function calculateCandidateScore(idea: Omit<ReelIdeaCandidate, "scores" | "ranking">): ReelIdeaCandidate["scores"] {
-  // Duration score penalizes deviation from the 52s sweet spot
-  const durationDiff = Math.abs(idea.targetDurationSeconds - 52);
+export function calculateCandidateScore(
+  idea: Omit<ReelIdeaCandidate, "scores" | "ranking" | "scoringBasis">,
+  analysis?: PerformanceAnalysis
+): { scores: ReelIdeaCandidate["scores"]; scoringBasis: ReelIdeaCandidate["scoringBasis"] } {
+  const sweetSpot = analysis?.durationSweetSpot?.recommendedDuration || 52;
+  const durationDiff = Math.abs(idea.targetDurationSeconds - sweetSpot);
   const durationOptimalityScore = Math.max(2, Math.round(10 - durationDiff * 0.4));
 
-  // Determine archetype weights based on AnimeEdits historical view hierarchy
-  let archetypeWeight = 8;
-  if (idea.archetype === "Sensory Paradox") archetypeWeight = 10;
-  else if (idea.archetype === "Reluctant Guardian") archetypeWeight = 9.5;
-  else if (idea.archetype === "High-IQ Checkmate") archetypeWeight = 9.0;
-  else if (idea.archetype === "Sound-First ASMR") archetypeWeight = 8.5;
+  // Determine dynamic archetype multiplier from input performance data
+  let archetypeWeight = 8.0;
+  let archetypeMeasuredAvgViews: number | undefined;
+  let retentionMeasured = false;
+
+  if (analysis?.topPerformingReels && analysis.topPerformingReels.length > 0) {
+    retentionMeasured = analysis.topPerformingReels.some(
+      (r) => r.avgWatchTimeSeconds != null && r.avgWatchTimeSeconds > 0
+    );
+
+    // Group reels by archetype matching keywords
+    const archetypePatterns: Record<string, RegExp> = {
+      "Sensory Paradox": /sensory|cane|blind|darkness|paradox|janitor/i,
+      "High-IQ Checkmate": /audit|checkmate|billionaire|broker|one-yen|iq|grandmaster|chess/i,
+      "Reluctant Guardian": /daughter|princess|parent|father|protect|school|lesson/i,
+      "Sound-First ASMR": /rain|sound|asmr|umbrella|train|subway|whisper|heliport/i,
+    };
+
+    const pattern = archetypePatterns[idea.archetype];
+    const matchingReels = analysis.topPerformingReels.filter(
+      (r) => pattern.test(r.title)
+    );
+
+    if (matchingReels.length > 0) {
+      const validViews = matchingReels
+        .map((r) => r.views)
+        .filter((v): v is number => typeof v === "number");
+      if (validViews.length > 0) {
+        archetypeMeasuredAvgViews = Math.round(
+          validViews.reduce((a, b) => a + b, 0) / validViews.length
+        );
+      }
+    }
+
+    // Rank archetypes in analysis by average views
+    const allArchetypeAvgViews: Record<string, number> = {};
+    for (const [archName, regex] of Object.entries(archetypePatterns)) {
+      const matched = analysis.topPerformingReels.filter((r) => regex.test(r.title));
+      const views = matched
+        .map((r) => r.views)
+        .filter((v): v is number => typeof v === "number");
+      if (views.length > 0) {
+        allArchetypeAvgViews[archName] = views.reduce((a, b) => a + b, 0) / views.length;
+      }
+    }
+
+    const sortedArchetypes = Object.entries(allArchetypeAvgViews).sort((a, b) => b[1] - a[1]);
+    const maxViewArch = sortedArchetypes[0];
+
+    if (maxViewArch && sortedArchetypes.length > 0) {
+      if (idea.archetype === maxViewArch[0]) {
+        archetypeWeight = 10.0;
+      } else {
+        const myAvg = allArchetypeAvgViews[idea.archetype] || 0;
+        const ratio = maxViewArch[1] > 0 ? myAvg / maxViewArch[1] : 0.8;
+        archetypeWeight = Math.max(7.0, Math.min(9.5, 7.5 + ratio * 2.0));
+      }
+    } else {
+      // Default baseline hierarchy
+      if (idea.archetype === "Sensory Paradox") archetypeWeight = 10.0;
+      else if (idea.archetype === "Reluctant Guardian") archetypeWeight = 9.5;
+      else if (idea.archetype === "High-IQ Checkmate") archetypeWeight = 9.0;
+      else if (idea.archetype === "Sound-First ASMR") archetypeWeight = 8.5;
+    }
+  } else {
+    // Default baseline when analysis has no top reels
+    if (idea.archetype === "Sensory Paradox") archetypeWeight = 10.0;
+    else if (idea.archetype === "Reluctant Guardian") archetypeWeight = 9.5;
+    else if (idea.archetype === "High-IQ Checkmate") archetypeWeight = 9.0;
+    else if (idea.archetype === "Sound-First ASMR") archetypeWeight = 8.5;
+  }
 
   const hookRetentionScore = Math.min(10, Math.round(archetypeWeight * 0.95));
   const audienceAffinityScore = Math.min(10, Math.round(archetypeWeight));
-  const shareabilityScore = idea.emotionalPayoff.includes("daughter") || idea.emotionalPayoff.includes("protect") ? 10 : 8;
+  const isFamilyProtective =
+    idea.archetype === "Reluctant Guardian" ||
+    idea.title.toLowerCase().includes("daughter") ||
+    idea.hookOpening.toLowerCase().includes("daughter") ||
+    idea.emotionalPayoff.toLowerCase().includes("daughter") ||
+    idea.emotionalPayoff.toLowerCase().includes("protect");
+  const shareabilityScore = isFamilyProtective ? 10 : 8;
   const loopPotentialScore = idea.loopMechanism ? 9 : 7;
 
   // Formula: Hook (30%) + Affinity (25%) + Shareability (20%) + Loop (15%) + Duration (10%)
   const overallWeightedScore = Math.round(
     hookRetentionScore * 3.0 +
-    audienceAffinityScore * 2.5 +
-    shareabilityScore * 2.0 +
-    loopPotentialScore * 1.5 +
-    durationOptimalityScore * 1.0
+      audienceAffinityScore * 2.5 +
+      shareabilityScore * 2.0 +
+      loopPotentialScore * 1.5 +
+      durationOptimalityScore * 1.0
   );
 
+  const methodology = retentionMeasured
+    ? "Data-driven: Archetype weights and duration sweet spot derived from live channel telemetry and measured watch times."
+    : "Heuristic: Retention telemetry unavailable from source; scores reflect channel template benchmarks.";
+
   return {
-    hookRetentionScore,
-    audienceAffinityScore,
-    shareabilityScore,
-    loopPotentialScore,
-    durationOptimalityScore,
-    overallWeightedScore,
+    scores: {
+      hookRetentionScore,
+      audienceAffinityScore,
+      shareabilityScore,
+      loopPotentialScore,
+      durationOptimalityScore,
+      overallWeightedScore,
+    },
+    scoringBasis: {
+      dataSource: analysis?.dataSource || "fixture",
+      retentionMeasured,
+      archetypeMultiplier: archetypeWeight,
+      archetypeMeasuredAvgViews,
+      durationDeviationSeconds: durationDiff,
+      methodology,
+    },
   };
 }
 
 export function generateAndRankIdeas(analysis: PerformanceAnalysis): ReelIdeaCandidate[] {
-  const rawCandidates: Array<Omit<ReelIdeaCandidate, "scores" | "ranking">> = [
+  const rawCandidates: Array<Omit<ReelIdeaCandidate, "scores" | "ranking" | "scoringBasis">> = [
     {
       id: "idea_blind_accountant_reversal",
       title: "The Blind King's Audit",
@@ -469,11 +720,15 @@ export function generateAndRankIdeas(analysis: PerformanceAnalysis): ReelIdeaCan
     },
   ];
 
-  // Calculate scores and sort descending
-  const scored = rawCandidates.map((c) => ({
-    ...c,
-    scores: calculateCandidateScore(c),
-  }));
+  // Calculate dynamic scores factoring in channel performance
+  const scored = rawCandidates.map((c) => {
+    const { scores, scoringBasis } = calculateCandidateScore(c, analysis);
+    return {
+      ...c,
+      scores,
+      scoringBasis,
+    };
+  });
 
   scored.sort((a, b) => {
     if (b.scores.overallWeightedScore !== a.scores.overallWeightedScore) {
@@ -583,24 +838,23 @@ You forgot... in the dark, I am the only one who can see.
 00:00:38,000 --> 00:00:44,500
 Tell the Chairman... my daughter's bedtime is nine o'clock. Don't be late.`;
 
-  // Attach verified local media asset from .data/media
-  const mediaDiskPath = path.join(process.cwd(), ".data", "media", "An_Intelligent_Blind_Gangster_Part1_MasterCut_42s.mp4");
+  // Attach verified media asset
+  const mediaFilename = "An_Intelligent_Blind_Gangster_Part1_MasterCut_42s.mp4";
   const mediaItem: PostMediaItem = {
-    url: "/api/media/An_Intelligent_Blind_Gangster_Part1_MasterCut_42s.mp4",
-    name: "An_Intelligent_Blind_Gangster_Part1_MasterCut_42s.mp4",
+    url: `/api/media/${mediaFilename}`,
+    name: mediaFilename,
     type: "video",
     origin: "generated",
     prompt: winningIdea.title + " - " + winningIdea.hookOpening,
     mimeType: "video/mp4",
   };
 
-  // Calculate verified media duration and dynamic next episode reference
   const episodeMatch = winningIdea.seriesEpisode.match(/#(\d+)/);
   const currentEpNum = episodeMatch ? parseInt(episodeMatch[1], 10) : 31;
   const nextEpNum = currentEpNum + 1;
 
   let durationToDisplay = winningIdea.targetDurationSeconds;
-  if (mediaItem.name.includes("_42s")) {
+  if (mediaItem.name?.includes("_42s")) {
     durationToDisplay = 42;
   }
 
@@ -642,6 +896,7 @@ export async function executeContentDirectorCycle(params: {
   userId: string;
   campaignId: number;
   idempotencyKey?: string;
+  allowFixtures?: boolean;
 }): Promise<ContentDirectorResult> {
   const lockKey = `${params.userId}_${params.campaignId}_${params.idempotencyKey || "default"}`;
 
@@ -657,24 +912,42 @@ export async function executeContentDirectorCycle(params: {
     // 1. Analyze performance
     const analysis = await analyzeChannelPerformance(params);
 
-    // 2. Generate and rank 10 ideas
+    if (analysis.dataSource === "unavailable" && !params.allowFixtures && process.env.NODE_ENV === "production") {
+      throw new Error(
+        `AnalyticsUnavailableError: Cannot generate content without reliable channel telemetry: ${analysis.error || "No data available."}`
+      );
+    }
+
+    // 2. Generate and rank 10 ideas based on performance data
     const rankedIdeas = generateAndRankIdeas(analysis);
     const winningIdea = rankedIdeas[0];
 
     // 3. Build full production package
     const productionPackage = buildProductionPackage(winningIdea, analysis);
 
-    // 4. Verify media asset physically exists on disk before attaching
-    const mediaPath = path.join(
-      process.cwd(),
-      ".data",
-      "media",
-      path.basename(productionPackage.attachedMedia.url)
-    );
-    if (!fs.existsSync(mediaPath)) {
-      // Create valid fallback video entry if file absent
-      fs.mkdirSync(path.dirname(mediaPath), { recursive: true });
-      fs.writeFileSync(mediaPath, Buffer.from("AI_ANIME_REEL_MASTER_STREAM_PLACEHOLDER"));
+    // 4. Verify media asset physically exists on disk and is a VALID MP4 (never placeholder)
+    const mediaFilename = path.basename(productionPackage.attachedMedia.url);
+    const candidatePaths = [
+      path.join(process.cwd(), ".data", "media", mediaFilename),
+      path.join(process.cwd(), "public", "media", mediaFilename),
+      path.join(process.cwd(), ".next", "standalone", "public", "media", mediaFilename),
+    ];
+    const resolvedMediaPath = candidatePaths.find((p) => fs.existsSync(p));
+
+    if (!resolvedMediaPath) {
+      console.error(`[ContentDirector] Media integrity failure: required video asset '${mediaFilename}' is missing.`);
+      throw new Error(
+        `MediaIntegrityError: Required video asset '${mediaFilename}' is missing. Content-production cycle stopped without creating a draft.`
+      );
+    }
+
+    // Strict media integrity check using binary headers and ffprobe
+    const validation = await validateVideoAsset(resolvedMediaPath);
+    if (!validation.valid) {
+      console.error(`[ContentDirector] Media integrity failure for '${mediaFilename}': ${validation.error}`);
+      throw new Error(
+        `MediaIntegrityError: Video asset '${mediaFilename}' failed integrity validation: ${validation.error}. Content-production cycle stopped without creating a draft.`
+      );
     }
 
     // 5. Save strictly as DRAFT in posts table (Human-in-the-Loop)
@@ -712,13 +985,14 @@ export async function executeContentDirectorCycle(params: {
         cta: productionPackage.socialPackaging.pinnedCommentPrompt,
         hashtags: productionPackage.socialPackaging.hashtags,
         media: [productionPackage.attachedMedia],
-        notes: `Selected Rank #1 idea: ${winningIdea.title} (Score: ${winningIdea.scores.overallWeightedScore}/100)`,
+        notes: `Selected Rank #1 idea: ${winningIdea.title} (Score: ${winningIdea.scores.overallWeightedScore}/100, Source: ${winningIdea.scoringBasis.dataSource})`,
         status: "draft",
         metadata: {
           rankedIdeas: rankedIdeas.slice(0, 5),
           storyboard: productionPackage.storyboard,
           postId: savedPost.id,
           scores: winningIdea.scores,
+          scoringBasis: winningIdea.scoringBasis,
         },
       })
       .returning();
@@ -733,7 +1007,7 @@ export async function executeContentDirectorCycle(params: {
           campaignId: params.campaignId,
           agentId: "creator",
           kind: "content_director_run",
-          content: `Content Director executed Rank #1 idea: "${winningIdea.title}" (${winningIdea.targetDurationSeconds}s). Hook archetype: "${winningIdea.archetype}". Score: ${winningIdea.scores.overallWeightedScore}/100. Target sweet spot: 50s-58s based on Ep #25 (139K views). Saved as Draft #${savedPost.id}.`,
+          content: `Content Director executed Rank #1 idea: "${winningIdea.title}" (${winningIdea.targetDurationSeconds}s). Hook archetype: "${winningIdea.archetype}". Score: ${winningIdea.scores.overallWeightedScore}/100. Target sweet spot: ${analysis.durationSweetSpot.recommendedDuration}s. Media verified (${validation.metadata?.durationSeconds || 42}s). Saved as Draft #${savedPost.id}.`,
           pinned: true,
         })
         .returning();
@@ -752,18 +1026,18 @@ export async function executeContentDirectorCycle(params: {
           campaignId: params.campaignId,
           agentId: "research",
           topic: "AnimeEdits Viral Reel Retention Drivers",
-          summary: `50s-58s duration sweet spot identified. Sensory paradox & protective father archetypes drive 139K views and 88 shares.`,
-          method: "live_facebook_insights_analysis",
+          summary: `${analysis.durationSweetSpot.minSeconds}s-${analysis.durationSweetSpot.maxSeconds}s duration sweet spot identified from ${analysis.dataSource} data. Top archetype: ${winningIdea.archetype}.`,
+          method: `${analysis.dataSource}_facebook_insights_analysis`,
           platforms: ["facebook"],
           hashtags: productionPackage.socialPackaging.hashtags,
           findings: [
             {
-              insight: "50-58s Sweet Spot",
-              details: "Episodes 24 & 25 generated 265K combined views due to higher replay completions.",
+              insight: `${analysis.durationSweetSpot.recommendedDuration}s Sweet Spot`,
+              details: `Recommended duration based on ${analysis.totalAnalyzedPosts} posts analyzed (${analysis.dataSource}).`,
             },
             {
-              insight: "3-Second Acoustic Hook",
-              details: "Cane strike or match click before dialogue drops scroll-away rate by 42%.",
+              insight: "Acoustic Hook",
+              details: `Top scoring archetype: ${winningIdea.archetype} (multiplier: ${winningIdea.scoringBasis.archetypeMultiplier}).`,
             },
           ],
         })

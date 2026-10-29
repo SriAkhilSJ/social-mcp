@@ -25,7 +25,7 @@ export interface ConnectedAccount {
 
 export interface PostMediaItem {
   url: string;
-  type?: "image" | "video";
+  type?: "image" | "video" | "audio";
   fileId?: string | null;
   name?: string;
   mimeType?: string;

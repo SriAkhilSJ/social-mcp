@@ -1,5 +1,6 @@
-import fs from "fs";
-import path from "path";
+import fs from "node:fs";
+import path from "node:path";
+import { Readable } from "node:stream";
 import { NextResponse } from "next/server";
 
 const MIME_MAP: Record<string, string> = {
@@ -12,7 +13,12 @@ const MIME_MAP: Record<string, string> = {
   ".jpeg": "image/jpeg",
   ".svg": "image/svg+xml",
   ".webp": "image/webp",
+  ".mp3": "audio/mpeg",
+  ".wav": "audio/wav",
+  ".aac": "audio/aac",
 };
+
+import { parseByteRange, type ParsedByteRange } from "@/lib/media/byte-range";
 
 export async function GET(
   req: Request,
@@ -20,38 +26,55 @@ export async function GET(
 ) {
   const { filename } = await context.params;
   const safeName = path.basename(filename);
-  let fullPath = path.join(process.cwd(), ".data", "media", safeName);
-  if (!fs.existsSync(fullPath)) {
-    fullPath = path.join(process.cwd(), "public", "media", safeName);
-  }
-  if (!fs.existsSync(fullPath)) {
-    fullPath = path.join(process.cwd(), ".next", "standalone", "public", "media", safeName);
-  }
 
-  if (!fs.existsSync(fullPath)) {
+  // Search storage locations in order of priority
+  const candidatePaths = [
+    path.join(process.cwd(), ".data", "media", safeName),
+    path.join(process.cwd(), "public", "media", safeName),
+    path.join(process.cwd(), ".next", "standalone", "public", "media", safeName),
+    path.join(process.cwd(), ".next", "standalone", ".data", "media", safeName),
+  ];
+
+  const fullPath = candidatePaths.find((p) => fs.existsSync(p));
+
+  if (!fullPath) {
     return new NextResponse("Not Found", { status: 404 });
   }
 
   const ext = path.extname(safeName).toLowerCase();
   const mime = MIME_MAP[ext] || "application/octet-stream";
-  const stat = fs.statSync(fullPath);
+
+  let stat: fs.Stats;
+  try {
+    stat = fs.statSync(fullPath);
+  } catch {
+    return new NextResponse("Failed to read media metadata", { status: 500 });
+  }
+
   const totalSize = stat.size;
   const rangeHeader = req.headers.get("range");
 
-  if (rangeHeader && mime.startsWith("video/")) {
-    const match = rangeHeader.match(/bytes=(\d*)-(\d*)/);
-    if (match) {
-      const start = match[1] ? parseInt(match[1], 10) : 0;
-      const end = match[2]
-        ? Math.min(parseInt(match[2], 10), totalSize - 1)
-        : totalSize - 1;
-      const chunkSize = end - start + 1;
-      const fd = fs.openSync(fullPath, "r");
-      const chunk = Buffer.alloc(chunkSize);
-      fs.readSync(fd, chunk, 0, chunkSize, start);
-      fs.closeSync(fd);
+  // If a range header is supplied for media content
+  if (rangeHeader) {
+    const parsed = parseByteRange(rangeHeader, totalSize);
 
-      return new NextResponse(chunk, {
+    if (parsed.status === 416) {
+      return new NextResponse(null, {
+        status: 416,
+        headers: {
+          "Content-Range": `bytes */${totalSize}`,
+          "Content-Type": mime,
+          "Accept-Ranges": "bytes",
+        },
+      });
+    }
+
+    if (parsed.status === 206) {
+      const { start, end, chunkSize } = parsed.range;
+      const fileStream = fs.createReadStream(fullPath, { start, end });
+      const webStream = Readable.toWeb(fileStream);
+
+      return new Response(webStream as unknown as BodyInit, {
         status: 206,
         headers: {
           "Content-Type": mime,
@@ -64,8 +87,12 @@ export async function GET(
     }
   }
 
-  const buf = fs.readFileSync(fullPath);
-  return new NextResponse(buf, {
+  // Stream full file (HTTP 200) without buffering entire file in memory
+  const fileStream = fs.createReadStream(fullPath);
+  const webStream = Readable.toWeb(fileStream);
+
+  return new Response(webStream as unknown as BodyInit, {
+    status: 200,
     headers: {
       "Content-Type": mime,
       "Accept-Ranges": "bytes",
