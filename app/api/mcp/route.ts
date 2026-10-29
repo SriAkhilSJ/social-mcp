@@ -1322,6 +1322,31 @@ export async function POST(req: Request) {
         .orderBy(desc(posts.id))
         .limit(limit);
 
+      let listOverview = {
+        name: "AnimeEdits",
+        pageId: "1316616991525561",
+        followers: 22774,
+        pageFollowers: 22774,
+        pageLikes: 22774,
+      };
+      try {
+        const token = process.env.FACEBOOK_PAGE_ACCESS_TOKEN || process.env.META_ACCESS_TOKEN || "";
+        if (token) {
+          const liveOv = await fetchFacebookPageOverview({ pageId: "1316616991525561", pageAccessToken: token });
+          if (liveOv) {
+            listOverview = {
+              name: liveOv.name,
+              pageId: liveOv.id,
+              followers: liveOv.followers,
+              pageFollowers: liveOv.pageFollowers,
+              pageLikes: liveOv.pageLikes,
+            };
+          }
+        }
+      } catch {
+        // fallback
+      }
+
       return NextResponse.json(
         {
           jsonrpc: "2.0",
@@ -1334,11 +1359,11 @@ export async function POST(req: Request) {
                   {
                     channel: "AnimeEdits (Official Facebook Page)",
                     connectedFacebookPage: {
-                      name: "AnimeEdits",
-                      pageId: "1316616991525561",
-                      followers: 22774,
-                      pageFollowers: 22774,
-                      pageLikes: 22774,
+                      name: listOverview.name,
+                      pageId: listOverview.pageId,
+                      followers: listOverview.followers,
+                      pageFollowers: listOverview.pageFollowers,
+                      pageLikes: listOverview.pageLikes,
                       status: "connected",
                       recentLikes: 51899,
                     },
