@@ -322,6 +322,18 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const acceptHeader = req.headers.get("accept") || "";
 
+  // Version or diagnostic check
+  if (url.searchParams.get("version") === "true") {
+    return NextResponse.json(
+      {
+        status: "ok",
+        deployment: getDeploymentInfo(),
+        timestamp: new Date().toISOString(),
+      },
+      { headers: CORS_HEADERS }
+    );
+  }
+
   // Diagnostic or SSE connection check
   if (acceptHeader.includes("text/event-stream")) {
     const stream = new ReadableStream({

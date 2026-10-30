@@ -13,7 +13,11 @@ const nextConfig: NextConfig = {
     "@e2b/desktop",
     "postgres",
     "sharp",
+    "@openai/agents",
+    "drizzle-orm",
+    "@insforge/sdk",
   ],
+  productionBrowserSourceMaps: false,
   webpack: (config) => {
     config.resolve.alias = {
       ...(config.resolve.alias || {}),

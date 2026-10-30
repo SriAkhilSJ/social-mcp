@@ -1,6 +1,5 @@
 import fs from "node:fs";
 import path from "node:path";
-import { getDb } from "@/db";
 
 export interface DraftTombstone {
   draftId: number;
@@ -12,6 +11,8 @@ export interface DraftTombstone {
 const TOMBSTONE_FILE_PATHS = [
   path.join(process.cwd(), ".data", "tombstones.json"),
   path.join(process.cwd(), "public", "tombstones.json"),
+  path.join(process.cwd(), ".next", "standalone", "public", "tombstones.json"),
+  path.join(process.cwd(), ".next", "standalone", ".data", "tombstones.json"),
 ];
 
 // In-memory cache for fast lookups
@@ -51,6 +52,7 @@ export async function recordDraftTombstone(
 
   // 1. Persist to database if table exists or can be created
   try {
+    const { getDb } = await import("@/db");
     const db = await getDb();
     if ("exec" in db) {
       await (db as any).exec(`
@@ -101,6 +103,7 @@ export async function isDraftTombstoned(draftId: number): Promise<boolean> {
 
   // Check database
   try {
+    const { getDb } = await import("@/db");
     const db = await getDb();
     if ("exec" in db) {
       const res: any = await (db as any).exec(
