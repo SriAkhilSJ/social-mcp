@@ -24,7 +24,7 @@ import { validateVideoAsset } from "@/lib/media/video-validator";
 // 1. DATA CONTRACTS & INTERFACES
 // ==========================================
 
-export type DataSourceType = "live" | "historical_cache" | "fixture" | "unavailable";
+export type DataSourceType = "live" | "historical_cache" | "fixture" | "unavailable" | "insufficient_data";
 
 export interface PerformanceAnalysis {
   channelName: string;
@@ -56,7 +56,9 @@ export interface PerformanceAnalysis {
   provenHooks: Array<{
     pattern: string;
     archetype: string;
-    avgViews: number;
+    avgViews: number | null;
+    isMeasured?: boolean;
+    measurementBasis?: "measured" | "heuristic" | "unsupported";
     example: string;
   }>;
   shareDrivers: string[];
@@ -109,6 +111,8 @@ export interface StoryboardScene {
 export interface FullProductionPackage {
   selectedIdea: ReelIdeaCandidate;
   title: string;
+  mediaStatus?: "storyboard_ready" | "media_validated" | "pending_generation";
+  videoValidated?: boolean;
   openingHook: {
     timeframe: "00:00 - 00:03";
     visualHook: string;
@@ -398,37 +402,132 @@ function buildAnalysisFromPosts(
     .filter((p) => p.views !== null && typeof p.views === "number" && p.views > 0)
     .sort((a, b) => (b.views || 0) - (a.views || 0));
 
+  const archetypeHookDefinitions: Record<
+    "Sensory Paradox" | "High-IQ Checkmate" | "Reluctant Guardian" | "Sound-First ASMR",
+    { pattern: string; regex: RegExp; example: string }
+  > = {
+    "Sensory Paradox": {
+      pattern: "The Sensory Paradox Pattern Interrupt",
+      regex: /sensory|cane|blind|darkness|paradox|janitor|grandmaster/i,
+      example: "A single cane tap in darkness followed by sudden blackout.",
+    },
+    "High-IQ Checkmate": {
+      pattern: "The High-IQ Reversal",
+      regex: /audit|checkmate|billionaire|broker|one-yen|iq|chess/i,
+      example: "The arrogant cartel boss realizes Ren already purchased his entire syndicate.",
+    },
+    "Reluctant Guardian": {
+      pattern: "The High-Stakes Protective Guardian",
+      regex: /daughter|princess|parent|father|protect|school|lesson/i,
+      example: "Ren adjusting his daughter's blanket before disarming 5 armed enforcers.",
+    },
+    "Sound-First ASMR": {
+      pattern: "The Foley Atmosphere Sensory Immersion",
+      regex: /rain|sound|asmr|umbrella|train|subway|whisper|heliport/i,
+      example: "Zero dialogue for 2 seconds; only heavy rain on silk umbrella and match strike.",
+    },
+  };
+
+  // If there are no posts with measurable views, return an explicit insufficient-data status
+  if (videosWithViews.length === 0) {
+    return {
+      channelName: "AnimeEdits",
+      totalAnalyzedPosts: postsData.length,
+      dataSource: "insufficient_data",
+      retrievedAt: new Date().toISOString(),
+      isFresh: false,
+      error: diagnosticError || "Insufficient channel evidence: 0 posts have measurable view or retention telemetry.",
+      topPerformingReels: [],
+      durationSweetSpot: {
+        minSeconds: 50,
+        maxSeconds: 58,
+        recommendedDuration: 52,
+        insight: "Insufficient view evidence to derive duration sweet spot; using baseline 52s benchmark.",
+      },
+      provenHooks: Object.entries(archetypeHookDefinitions).map(([archetype, def]) => ({
+        pattern: def.pattern,
+        archetype,
+        avgViews: null,
+        isMeasured: false,
+        measurementBasis: "heuristic" as const,
+        example: `${def.example} (Heuristic recommendation: Insufficient channel evidence)`,
+      })),
+      shareDrivers: [
+        "Moral high ground (protecting child from criminal syndicates)",
+        "Cool-headed psychological dominance over aggressive antagonists",
+        "Satisfying underdog checkmate without visible violence",
+      ],
+      audiencePreferences: [
+        "Atmospheric Tokyo noir anime aesthetic with cinematic rain and neon reflections",
+        "MAPPA / Ufotable dark cel animation look (charcoal suit, dark sunglasses, silver-headed cane)",
+        "High-contrast chiaroscuro lighting and crisp native foley audio",
+      ],
+    };
+  }
+
   let recommendedDuration = 52;
   let minSweet = 50;
   let maxSweet = 58;
 
-  if (videosWithViews.length > 0) {
-    const topVideos = videosWithViews.slice(0, 5);
-    const validDurations = topVideos
-      .map((v) => v.lengthSeconds)
-      .filter((d): d is number => typeof d === "number" && d > 0);
+  const topVideos = videosWithViews.slice(0, 5);
+  const validDurations = topVideos
+    .map((v) => v.lengthSeconds)
+    .filter((d): d is number => typeof d === "number" && d > 0);
 
-    if (validDurations.length > 0) {
-      const avgTopDuration = validDurations.reduce((acc, d) => acc + d, 0) / validDurations.length;
-      recommendedDuration = Math.round(avgTopDuration);
-      minSweet = Math.max(30, recommendedDuration - 4);
-      maxSweet = recommendedDuration + 6;
-    }
+  if (validDurations.length > 0) {
+    const avgTopDuration = validDurations.reduce((acc, d) => acc + d, 0) / validDurations.length;
+    recommendedDuration = Math.round(avgTopDuration);
+    minSweet = Math.max(30, recommendedDuration - 4);
+    maxSweet = recommendedDuration + 6;
   }
 
-  const topPerformingReels = videosWithViews.slice(0, 5).map((p) => ({
-    id: p.id,
-    videoId: p.videoId,
-    title: p.text ? p.text.split("\n")[0].slice(0, 60) : "Anime Video Reel",
-    views: p.views,
-    likes: p.likes,
-    shares: p.shares,
-    comments: p.comments,
-    durationSeconds: p.lengthSeconds ?? null,
-    replays: p.insights?.replayCount,
-    avgWatchTimeSeconds: p.insights?.avgWatchTimeSeconds,
-    retentionMeasured: p.insights?.avgWatchTimeSeconds != null && p.insights.avgWatchTimeSeconds > 0,
-  }));
+  const topPerformingReels = videosWithViews.slice(0, 5).map((p) => {
+    const hasRetention = p.insights?.avgWatchTimeSeconds != null && p.insights.avgWatchTimeSeconds > 0;
+    return {
+      id: p.id,
+      videoId: p.videoId,
+      title: p.text ? p.text.split("\n")[0].slice(0, 60) : "Anime Video Reel",
+      views: p.views ?? null,
+      likes: p.likes ?? 0,
+      shares: p.shares ?? 0,
+      comments: p.comments ?? 0,
+      durationSeconds: p.lengthSeconds ?? null,
+      replays: p.insights?.replayCount,
+      avgWatchTimeSeconds: p.insights?.avgWatchTimeSeconds,
+      retentionMeasured: hasRetention,
+    };
+  });
+
+  const provenHooks = Object.entries(archetypeHookDefinitions).map(([archetype, def]) => {
+    const matchedReels = videosWithViews.filter((p) => {
+      const title = p.text || "";
+      return def.regex.test(title);
+    });
+
+    if (matchedReels.length > 0) {
+      const avgViews = Math.round(
+        matchedReels.reduce((acc, r) => acc + (r.views || 0), 0) / matchedReels.length
+      );
+      return {
+        pattern: def.pattern,
+        archetype,
+        avgViews,
+        isMeasured: true,
+        measurementBasis: "measured" as const,
+        example: def.example,
+      };
+    }
+
+    // Unmatched archetype — do NOT fabricate a fake view number; clearly label as heuristic
+    return {
+      pattern: def.pattern,
+      archetype,
+      avgViews: null,
+      isMeasured: false,
+      measurementBasis: "heuristic" as const,
+      example: `${def.example} (Heuristic recommendation: No matching channel posts found in analysis)`,
+    };
+  });
 
   return {
     channelName: "AnimeEdits",
@@ -445,26 +544,7 @@ function buildAnalysisFromPosts(
       recommendedDuration,
       insight: `${minSweet}s–${maxSweet}s duration sweet spot maximizes completion rates and replay triggers based on ${dataSource} data.`,
     },
-    provenHooks: [
-      {
-        pattern: "The Sensory Paradox Pattern Interrupt",
-        archetype: "Sensory Paradox",
-        avgViews: topPerformingReels[0]?.views || 139475,
-        example: "A single cane tap in darkness followed by sudden blackout.",
-      },
-      {
-        pattern: "The High-Stakes Protective Guardian",
-        archetype: "Reluctant Guardian",
-        avgViews: topPerformingReels[1]?.views || 125726,
-        example: "Ren adjusting his daughter's blanket before disarming 5 armed enforcers.",
-      },
-      {
-        pattern: "The High-IQ Reversal",
-        archetype: "High-IQ Checkmate",
-        avgViews: topPerformingReels[2]?.views || 97284,
-        example: "The arrogant cartel boss realizes Ren already purchased his entire syndicate.",
-      },
-    ],
+    provenHooks,
     shareDrivers: [
       "Moral high ground (protecting child from criminal syndicates)",
       "Cool-headed psychological dominance over aggressive antagonists",
@@ -582,9 +662,15 @@ export function calculateCandidateScore(
       durationOptimalityScore * 1.0
   );
 
-  const methodology = retentionMeasured
-    ? "Data-driven: Archetype weights and duration sweet spot derived from live channel telemetry and measured watch times."
-    : "Heuristic: Retention telemetry unavailable from source; scores reflect channel template benchmarks.";
+  const hasMeasuredViews = (analysis?.topPerformingReels && analysis.topPerformingReels.length > 0) || false;
+  let methodology: string;
+  if (retentionMeasured) {
+    methodology = "Data-driven: Archetype weights and duration sweet spot derived from live channel telemetry and measured watch times.";
+  } else if (hasMeasuredViews && analysis?.dataSource !== "insufficient_data") {
+    methodology = "Heuristic retention: Views measured from channel telemetry, but retention/watch-time telemetry is unavailable from source; scores reflect measured views with heuristic retention estimates.";
+  } else {
+    methodology = "Heuristic: Insufficient channel evidence; scores reflect baseline template benchmarks without empirical telemetry.";
+  }
 
   return {
     scores: {
@@ -748,22 +834,278 @@ export function generateAndRankIdeas(analysis: PerformanceAnalysis): ReelIdeaCan
 // 4. PRODUCTION PACKAGE GENERATOR
 // ==========================================
 
-export function buildProductionPackage(winningIdea: ReelIdeaCandidate, analysis: PerformanceAnalysis): FullProductionPackage {
+function generateArchetypeStoryboardAndNarration(winningIdea: ReelIdeaCandidate) {
+  const targetDuration = winningIdea.targetDurationSeconds;
+  const quoteMatch = winningIdea.hookOpening.match(/"([^"]+)"/);
+  const hookQuote = quoteMatch ? `"${quoteMatch[1]}"` : winningIdea.hookOpening;
+
+  if (winningIdea.archetype === "High-IQ Checkmate") {
+    const s1Dialogue = hookQuote || '"Your debt is due."';
+    const s2Dialogue = '"Ren Kurokawa! Hand over your accounts, or this boardroom becomes a graveyard."';
+    const s3Dialogue = '"You brought guns to a financial checkmate. I purchased your syndicate three minutes ago."';
+    const s4Dialogue = '"Check your accounts in the morning. Click. Click."';
+
+    const storyboard: StoryboardScene[] = [
+      {
+        sceneNumber: 1,
+        name: "The Boardroom Checkmate Hook",
+        timeframe: "00:00 - 00:03",
+        visualDescription:
+          "Extreme close-up of dark sunglasses reflecting glowing red stock ticker numbers in the dark boardroom. Ren Kurokawa in bespoke charcoal suit calmly taps his silver-headed cane: TAP.",
+        cameraMotion: "Fast dolly-in macro to wide snap reveal",
+        lightingAndColor: "Dark Tokyo corporate noir, crimson neon reflections on polished marble, chiaroscuro",
+        veoPrompt:
+          "9:16 vertical video. [00:00-00:03] Extreme close-up of dark sunglasses reflecting Tokyo neon numbers. Rapid camera pull-back reveals Ren Kurokawa in bespoke charcoal suit typing on mechanical calculator. Dark noir anime aesthetic, MAPPA style. Native audio: mechanical calculator click, deep echoing cane tap.",
+        nativeAudioCue: "Mechanical calculator click, heavy cane tap on marble, low bass pulse",
+        speaker: "Ren Kurokawa",
+        dialogue: s1Dialogue,
+        subtitles: s1Dialogue,
+      },
+      {
+        sceneNumber: 2,
+        name: "The Corporate Syndicate Confrontation",
+        timeframe: "00:03 - 00:18",
+        visualDescription:
+          "Cartel executives and armed tactical bodyguards surround the boardroom table, slamming files down demanding Ren surrender his financial holdings. Ren sits motionless.",
+        cameraMotion: "Low angle slow tracking shot behind Ren's motionless silhouette",
+        lightingAndColor: "Cold blue halogen lighting flickering against stormy penthouse windows",
+        veoPrompt:
+          "9:16 vertical video. [00:03-00:18] Arrogant syndicate executives surround Ren Kurokawa, shouting demands. Ren sits completely motionless with hands on walking cane. Cel anime, high tension lighting.",
+        nativeAudioCue: "Files slamming on table, tense heartbeat pulse, rain against skyscraper glass",
+        speaker: "Cartel Boss",
+        dialogue: s2Dialogue,
+        subtitles: s2Dialogue,
+      },
+      {
+        sceneNumber: 3,
+        name: "The Financial Reversal & Total Liquidation",
+        timeframe: "00:18 - 00:38",
+        visualDescription:
+          "Ren taps his cane once. Every financial terminal in the room flashes red with liquidation notices. The syndicate boss checks his phone; his entire bank balance drops to zero.",
+        cameraMotion: "Speed ramp crash zoom on the boss's terrified face, whip pan to Ren standing serenely behind him",
+        lightingAndColor: "Emergency amber alert strobe contrasting with pitch shadows",
+        veoPrompt:
+          "9:16 vertical video. [00:18-00:38] Ren Kurokawa stands up. Boardroom monitors flash red market crash alerts. Syndicate boss collapses to his knees staring at his phone. Cinematic anime, Ufotable lighting effects.",
+        nativeAudioCue: "Emergency sirens, electronic liquidation chime, heavy cane thud",
+        speaker: "Ren Kurokawa",
+        dialogue: s3Dialogue,
+        subtitles: s3Dialogue,
+      },
+      {
+        sceneNumber: 4,
+        name: "The Checkmate & Seamless Audio Loop",
+        timeframe: `00:38 - 00:${targetDuration}`,
+        visualDescription:
+          "Ren calmly adjusts his lapel, walks toward the elevator as the security team parts in awe. In the final second, Ren taps his cane: TAP.",
+        cameraMotion: "Slow cinematic dolly backward framing Ren stepping into the elevator",
+        lightingAndColor: "Warm elevator gold contrasting with dark ruined boardroom",
+        veoPrompt:
+          `9:16 vertical video. [00:38-00:${targetDuration}] Ren Kurokawa walks into golden elevator, disarmed guards bowing in defeat. Final frame: cane taps floor, matching opening frame 1 audio.`,
+        nativeAudioCue: "Elevator chime, final sharp cane tap echoing into opening click",
+        speaker: "Ren Kurokawa",
+        dialogue: s4Dialogue,
+        subtitles: s4Dialogue,
+      },
+    ];
+
+    const fullNarrationText = `${s1Dialogue} ${s2Dialogue} ${s3Dialogue} ${s4Dialogue}`;
+    const srtFormattedSubtitles = `1\n00:00:00,000 --> 00:00:03,000\n${s1Dialogue}\n\n2\n00:00:03,500 --> 00:00:18,000\n${s2Dialogue}\n\n3\n00:00:18,500 --> 00:00:38,000\n${s3Dialogue}\n\n4\n00:00:38,500 --> 00:00:${targetDuration},000\n${s4Dialogue}`;
+
+    return {
+      storyboard,
+      fullNarrationText,
+      srtFormattedSubtitles,
+      onScreenText: "NEVER BRING GUNS TO A FINANCIAL CHECKMATE ♟️",
+      captionHeadline: "Never play chess with a man who calculated your bankruptcy before you entered the room.",
+      hashtags: ["anime", "animeedits", "highiq", "checkmate", "animereels", "mafiaboss", "cinematic"],
+    };
+  }
+
+  if (winningIdea.archetype === "Sound-First ASMR") {
+    const s1Dialogue = hookQuote || '"Zero dialogue for two seconds. Only rain on silk... and a blind man waiting."';
+    const s2Dialogue = '"Give us the Syndicate names, Ren! You have nowhere to run in this alley."';
+    const s3Dialogue = '"The rain washes away footprints, Detective... but it never washes away debt."';
+    const s4Dialogue = '"Listen to the rain. It always knows the truth. DRIP."';
+
+    const storyboard: StoryboardScene[] = [
+      {
+        sceneNumber: 1,
+        name: "The Foley Atmosphere Sensory Immersion",
+        timeframe: "00:00 - 00:03",
+        visualDescription:
+          "Extreme macro close-up of raindrops pounding the silk fabric of a jet-black umbrella. A match strike illuminates Ren Kurokawa's dark sunglasses in Shibuya rain.",
+        cameraMotion: "Ultra slow-motion macro pull-back to dark alley silhouette",
+        lightingAndColor: "Deep Tokyo noir alleyway, cobalt blue rain, neon cyan reflections",
+        veoPrompt:
+          "9:16 vertical video. [00:00-00:03] Macro slow-motion raindrops hitting black silk umbrella. Match strike illuminates Ren Kurokawa in dark sunglasses. MAPPA dark noir style. Native audio: crisp rain on silk, match sizzle, low thunder.",
+        nativeAudioCue: "Heavy crisp rain on silk umbrella, sharp match strike sizzle, low rumbling thunder",
+        speaker: "Narrator",
+        dialogue: s1Dialogue,
+        subtitles: s1Dialogue,
+      },
+      {
+        sceneNumber: 2,
+        name: "The Alleyway Rain Interrogation",
+        timeframe: "00:03 - 00:18",
+        visualDescription:
+          "A corrupt detective and armed enforcers corner Ren under a flickering Shibuya streetlamp, demanding names amidst heavy downpour.",
+        cameraMotion: "Slow low-angle tracking through misty puddle reflections",
+        lightingAndColor: "Flickering amber sodium streetlamp casting wet shadows in dense mist",
+        veoPrompt:
+          "9:16 vertical video. [00:03-00:18] Corrupt detective confronts Ren Kurokawa under flickering streetlamp in wet alleyway. Rain pours continuously, creating dense atmospheric mist.",
+        nativeAudioCue: "Footsteps splashing in puddles, streetlamp hum, heavy rain drumming",
+        speaker: "Detective",
+        dialogue: s2Dialogue,
+        subtitles: s2Dialogue,
+      },
+      {
+        sceneNumber: 3,
+        name: "The Acoustic Fluid Disarm",
+        timeframe: "00:18 - 00:38",
+        visualDescription:
+          "Ren tilts his umbrella. Using the rhythm of falling water and puddle acoustic echoes, Ren disarms both enforcers in three lightning cane strokes.",
+        cameraMotion: "High-speed martial arts tracking with water splashes rendered in slow motion cel anime",
+        lightingAndColor: "Neon magenta puddles splashing amidst dark alley shadows",
+        veoPrompt:
+          "9:16 vertical video. [00:18-00:38] Ren Kurokawa uses umbrella and cane in fluid acoustic martial arts, disarming attackers amidst splashing puddles. Ufotable water effects.",
+        nativeAudioCue: "Umbrella snap, cane whoosh, metallic weapons splashing into water puddles",
+        speaker: "Ren Kurokawa",
+        dialogue: s3Dialogue,
+        subtitles: s3Dialogue,
+      },
+      {
+        sceneNumber: 4,
+        name: "The ASMR Water Droplet Loop",
+        timeframe: `00:38 - 00:${targetDuration}`,
+        visualDescription:
+          "Ren walks into the mist, umbrella tilted. A single water droplet drips from the umbrella tip into a neon puddle in ultra-close-up.",
+        cameraMotion: "Macro drop down to circular puddle ripple",
+        lightingAndColor: "Glowing teal neon reflection in circular ripple",
+        veoPrompt:
+          `9:16 vertical video. [00:38-00:${targetDuration}] Ren Kurokawa walks into rain mist. Final second: single water droplet falls from umbrella into puddle, looping seamlessly to opening rain beat.`,
+        nativeAudioCue: "Single crisp water droplet splash into puddle, looping into opening rain sound",
+        speaker: "Ren Kurokawa",
+        dialogue: s4Dialogue,
+        subtitles: s4Dialogue,
+      },
+    ];
+
+    const fullNarrationText = `${s1Dialogue} ${s2Dialogue} ${s3Dialogue} ${s4Dialogue}`;
+    const srtFormattedSubtitles = `1\n00:00:00,000 --> 00:00:03,000\n${s1Dialogue}\n\n2\n00:00:03,500 --> 00:00:18,000\n${s2Dialogue}\n\n3\n00:00:18,500 --> 00:00:38,000\n${s3Dialogue}\n\n4\n00:00:38,500 --> 00:00:${targetDuration},000\n${s4Dialogue}`;
+
+    return {
+      storyboard,
+      fullNarrationText,
+      srtFormattedSubtitles,
+      onScreenText: "PUT ON HEADPHONES FOR THIS SOUND EXPERIENCE 🎧",
+      captionHeadline: "When rain hits the silk umbrella, the blind boss already knows your next move.",
+      hashtags: ["anime", "animeedits", "asmr", "sounddesign", "animereels", "mafiaboss", "cinematic"],
+    };
+  }
+
+  if (winningIdea.archetype === "Sensory Paradox") {
+    const s1Dialogue = hookQuote || '"A sighted man watches the pieces. A master watches the room."';
+    const s2Dialogue = '"You are blind, Kurokawa! You cannot see my queen advancing on your king."';
+    const s3Dialogue = '"Checkmate on move four. I do not need eyes to read the vibrations of your heartbeat."';
+    const s4Dialogue = '"A master never needs to look. CLACK."';
+
+    const storyboard: StoryboardScene[] = [
+      {
+        sceneNumber: 1,
+        name: "The Sensory Paradox Hook",
+        timeframe: "00:00 - 00:03",
+        visualDescription:
+          "Extreme close-up of a carved obsidian chess piece sliding across a crystal table without looking. Ren Kurokawa taps the crystal: TAP.",
+        cameraMotion: "Macro tracking on sliding piece, pulling back to Ren's dark sunglasses",
+        lightingAndColor: "Deep chiaroscuro, sharp spotlight illuminating crystal chess board amidst pitch shadows",
+        veoPrompt:
+          "9:16 vertical video. [00:00-00:03] Extreme close-up of blind Ren Kurokawa sliding obsidian chess king across crystal table without looking. Dark noir anime aesthetic, MAPPA style.",
+        nativeAudioCue: "Sharp wooden chess clack, acoustic marble resonance, deep sub-bass pulse",
+        speaker: "Ren Kurokawa",
+        dialogue: s1Dialogue,
+        subtitles: s1Dialogue,
+      },
+      {
+        sceneNumber: 2,
+        name: "The Arrogant Challenge",
+        timeframe: "00:03 - 00:18",
+        visualDescription:
+          "The underground broker sneers, betting his fortune across the crystal table while bodyguards look on. Ren listens calmly.",
+        cameraMotion: "Circular tracking shot around the high-stakes table",
+        lightingAndColor: "Smoky speakeasy lighting, neon amber and emerald shadows",
+        veoPrompt:
+          "9:16 vertical video. [00:03-00:18] Arrogant cartel broker sneers, betting his fortune across crystal chess table. Ren remains completely still, listening to breathing patterns.",
+        nativeAudioCue: "Chips clattering, smug antagonist laughter, ticking tournament chess clock",
+        speaker: "Underground Broker",
+        dialogue: s2Dialogue,
+        subtitles: s2Dialogue,
+      },
+      {
+        sceneNumber: 3,
+        name: "The Acoustic Checkmate Reversal",
+        timeframe: "00:18 - 00:38",
+        visualDescription:
+          "Move 4 checkmate. Ren slides a piece into place without touching the board twice. The broker realizes every piece is pinned through marble vibrations.",
+        cameraMotion: "Fast snap-zoom into the shattered reflection in the crystal board",
+        lightingAndColor: "Cold blue neon flare across Ren's dark sunglasses",
+        veoPrompt:
+          "9:16 vertical video. [00:18-00:38] Ren executes move 4 checkmate. Broker freezes in terror as board vibrations reveal his defeat. High impact anime motion blur, Ufotable style.",
+        nativeAudioCue: "Final decisive wooden clack, table vibration boom, antagonist gasp",
+        speaker: "Ren Kurokawa",
+        dialogue: s3Dialogue,
+        subtitles: s3Dialogue,
+      },
+      {
+        sceneNumber: 4,
+        name: "The Grandmaster Walkaway & Loop",
+        timeframe: `00:38 - 00:${targetDuration}`,
+        visualDescription:
+          "Ren stands, sweeps the table clean with a single motion of his cane, and walks into the Tokyo night. Final frame: obsidian king falls with a sharp clack.",
+        cameraMotion: "Slow dolly-out through the rain-streaked doorway",
+        lightingAndColor: "Silhouette against Shibuya neon rain",
+        veoPrompt:
+          `9:16 vertical video. [00:38-00:${targetDuration}] Ren Kurokawa walks out into rainy Tokyo night. Final frame: obsidian piece clacks onto marble, perfectly matching frame 1 audio loop.`,
+        nativeAudioCue: "Rain falling on asphalt, single decisive chess clack looping to frame 1",
+        speaker: "Ren Kurokawa",
+        dialogue: s4Dialogue,
+        subtitles: s4Dialogue,
+      },
+    ];
+
+    const fullNarrationText = `${s1Dialogue} ${s2Dialogue} ${s3Dialogue} ${s4Dialogue}`;
+    const srtFormattedSubtitles = `1\n00:00:00,000 --> 00:00:03,000\n${s1Dialogue}\n\n2\n00:00:03,500 --> 00:00:18,000\n${s2Dialogue}\n\n3\n00:00:18,500 --> 00:00:38,000\n${s3Dialogue}\n\n4\n00:00:38,500 --> 00:00:${targetDuration},000\n${s4Dialogue}`;
+
+    return {
+      storyboard,
+      fullNarrationText,
+      srtFormattedSubtitles,
+      onScreenText: "THE BLIND GRANDMASTER SEES EVERYTHING 👁️",
+      captionHeadline: "In the dark, a sighted man watches the pieces... but a master watches the room.",
+      hashtags: ["anime", "animeedits", "grandmaster", "sensoryparadox", "animereels", "mafiaboss", "cinematic"],
+    };
+  }
+
+  // Default: Reluctant Guardian
+  const s1Dialogue = hookQuote || '"Close your ears, sweetie. Daddy needs to teach five men how to knock."';
+  const s2Dialogue = '"Ren Kurokawa! The Syndicate council wants your ledger. Hand it over, or this penthouse becomes a graveyard."';
+  const s3Dialogue = "\"You brought guns into a blind man's house. You forgot... in the dark, I am the only one who can see.\"";
+  const s4Dialogue = "\"Tell the Chairman... my daughter's bedtime is nine o'clock. Don't be late.\"";
+
   const storyboard: StoryboardScene[] = [
     {
       sceneNumber: 1,
       name: "The Scroll-Stopping Hook",
       timeframe: "00:00 - 00:03",
       visualDescription:
-        "Extreme macro close-up of dark sunglasses glistening with heavy neon rain. Sudden whip-pan back to reveal Ren Kurokawa in a bespoke charcoal three-piece suit calmly tapping his silver-headed cane on marble.",
+        "Extreme macro close-up of dark sunglasses glistening with heavy neon rain. Sudden whip-pan back to reveal Ren Kurokawa in charcoal three-piece suit calmly wrapping a scarf around his daughter.",
       cameraMotion: "Fast dolly-in macro to wide snap reveal",
       lightingAndColor: "Dark Tokyo noir, crimson neon reflections on black puddles, high contrast chiaroscuro",
       veoPrompt:
-        "9:16 vertical video. [00:00-00:03] Extreme close-up of dark sunglasses reflecting Tokyo neon rain. Rapid camera pull-back reveals Ren Kurokawa in a bespoke charcoal suit holding a silver-handled walking cane on wet marble. Dark noir anime aesthetic, MAPPA style, rain dripping from jacket lapels. Native audio: sharp water droplet splashing into deep echoing cane tap and heavy sub-bass boom.",
+        "9:16 vertical video. [00:00-00:03] Extreme close-up of dark sunglasses reflecting Tokyo neon rain. Rapid camera pull-back reveals Ren Kurokawa in bespoke charcoal suit holding a silver-handled walking cane on wet marble. Dark noir anime aesthetic, MAPPA style.",
       nativeAudioCue: "Sharp water droplet splash, echoing cane tap on marble, low sub-bass rumble",
-      speaker: "Narrator / Ren",
-      dialogue: "Close your ears, sweetie. Daddy needs to teach five men how to knock.",
-      subtitles: "Close your ears, sweetie. Daddy needs to teach five men how to knock.",
+      speaker: "Ren Kurokawa",
+      dialogue: s1Dialogue,
+      subtitles: s1Dialogue,
     },
     {
       sceneNumber: 2,
@@ -774,84 +1116,91 @@ export function buildProductionPackage(winningIdea: ReelIdeaCandidate, analysis:
       cameraMotion: "Low angle slow tracking shot behind Ren's silhouette",
       lightingAndColor: "Warm interior penthouse chandelier dimmed by cold blue lightning flashes outside",
       veoPrompt:
-        "9:16 vertical video. [00:03-00:18] Low angle tracking shot behind Ren Kurokawa as five armed tactical gangsters burst through double doors. Ren calmly adjusts a silk blanket over a little girl sitting on a velvet sofa. Dynamic anime cel animation, dramatic rim light from chandelier. Native audio: muffled rain outside, gun hammers cocking in unison, calm steady breath.",
+        "9:16 vertical video. [00:03-00:18] Low angle tracking shot behind Ren Kurokawa as five armed tactical gangsters burst through double doors. Ren calmly adjusts a silk blanket over a little girl sitting on a velvet sofa.",
       nativeAudioCue: "Heavy door creak, gun bolts racking, gentle fabric rustle",
       speaker: "Cartel Captain",
-      dialogue: "Ren Kurokawa! The Syndicate council wants your ledger. Hand it over, or this penthouse becomes a graveyard.",
-      subtitles: "Ren Kurokawa! The Syndicate council wants your ledger. Hand it over!",
+      dialogue: s2Dialogue,
+      subtitles: s2Dialogue,
     },
     {
       sceneNumber: 3,
       name: "The Calculation & Checkmate",
       timeframe: "00:18 - 00:38",
       visualDescription:
-        "Ren Kurokawa turns his head slightly, hearing the acoustic echo of their breathing. He lifts his walking cane and strikes the floor once. The overhead penthouse lights immediately plunge into total darkness. In the blackness, five rapid flashes of lightning illuminate Ren already standing behind them.",
+        "Ren Kurokawa strikes the floor once with his cane. The overhead penthouse lights immediately plunge into total darkness. In the blackness, rapid lightning illuminates Ren already standing behind them.",
       cameraMotion: "Speed ramp fast push-in with silhouette freeze-frames during lightning bursts",
       lightingAndColor: "Pitch darkness punctuated by stroboscopic white lightning and neon cyan flashes",
       veoPrompt:
-        "9:16 vertical video. [00:18-00:38] Ren taps his cane. Penthouse lights snap off into pitch darkness. Flash of lightning illuminates Ren Kurokawa moving like a ghost between armed gangsters. Fluid high-speed martial arts choreography with walking cane. Dark thriller anime, Ufotable motion blur, intense cinematic sparks. Native audio: light switch click, thunder crack, whoosh of wooden cane, metallic disarming clatter.",
+        "9:16 vertical video. [00:18-00:38] Ren taps his cane. Penthouse lights snap off into pitch darkness. Flash of lightning illuminates Ren Kurokawa moving like a ghost between armed gangsters.",
       nativeAudioCue: "Light switch pop, deep thunder crack, cane whoosh, weapons falling to floor",
       speaker: "Ren Kurokawa",
-      dialogue: "You brought guns into a blind man's house. You forgot... in the dark, I am the only one who can see.",
-      subtitles: "You brought guns into a blind man's house. In the dark... I am the only one who can see.",
+      dialogue: s3Dialogue,
+      subtitles: s3Dialogue,
     },
     {
       sceneNumber: 4,
       name: "The Climax & Seamless Viral Loop",
-      timeframe: "00:38 - 00:54",
+      timeframe: `00:38 - 00:${targetDuration}`,
       visualDescription:
         "The penthouse lights flicker back on. The five enforcers are disarmed on their knees. Ren Kurokawa stands at his desk pouring a cup of hot jasmine tea. His daughter smiles quietly. In the final second, Ren gently taps his cane: TAP.",
       cameraMotion: "Slow cinematic dolly backward framing the warm room against the stormy Tokyo skyline",
       lightingAndColor: "Warm golden amber tea glow contrasting with cold rainy night outside",
       veoPrompt:
-        "9:16 vertical video. [00:38-00:54] Penthouse lights return. Disarmed mobsters kneeling in defeat. Ren Kurokawa calmly pours steaming tea into a porcelain cup for his smiling daughter. Tokyo skyline rain outside penthouse window. High-end cinematic anime masterpiece. Native audio: steaming tea pour, quiet exhale, rhythmic cane tap matching frame 1.",
+        `9:16 vertical video. [00:38-00:${targetDuration}] Penthouse lights return. Disarmed mobsters kneeling in defeat. Ren Kurokawa calmly pours steaming tea into a porcelain cup for his smiling daughter.`,
       nativeAudioCue: "Tea pouring into porcelain cup, quiet rainfall, sharp cane tap matching opening audio",
       speaker: "Ren Kurokawa",
-      dialogue: "Tell the Chairman... my daughter's bedtime is nine o'clock. Don't be late for the next lesson.",
-      subtitles: "Tell the Chairman... my daughter's bedtime is nine o'clock. Don't be late.",
+      dialogue: s4Dialogue,
+      subtitles: s4Dialogue,
     },
   ];
 
-  const fullNarrationText =
-    "Close your ears, sweetie. Daddy needs to teach five men how to knock. " +
-    "Ren Kurokawa! The Syndicate council wants your ledger. Hand it over, or this penthouse becomes a graveyard. " +
-    "You brought guns into a blind man's house. You forgot... in the dark, I am the only one who can see. " +
-    "Tell the Chairman... my daughter's bedtime is nine o'clock. Don't be late.";
+  const fullNarrationText = `${s1Dialogue} ${s2Dialogue} ${s3Dialogue} ${s4Dialogue}`;
+  const srtFormattedSubtitles = `1\n00:00:00,000 --> 00:00:03,000\n${s1Dialogue}\n\n2\n00:00:03,500 --> 00:00:18,000\n${s2Dialogue}\n\n3\n00:00:18,500 --> 00:00:38,000\n${s3Dialogue}\n\n4\n00:00:38,500 --> 00:00:${targetDuration},000\n${s4Dialogue}`;
 
-  const srtFormattedSubtitles = `1
-00:00:00,000 --> 00:00:03,200
-Close your ears, sweetie. Daddy needs to teach five men how to knock.
-
-2
-00:00:03,500 --> 00:00:08,000
-Ren Kurokawa! The Syndicate wants your ledger. Hand it over!
-
-3
-00:00:18,500 --> 00:00:23,800
-You brought guns into a blind man's house.
-
-4
-00:00:24,000 --> 00:00:29,500
-You forgot... in the dark, I am the only one who can see.
-
-5
-00:00:38,000 --> 00:00:44,500
-Tell the Chairman... my daughter's bedtime is nine o'clock. Don't be late.`;
-
-  // Attach verified media asset
-  const mediaFilename = "An_Intelligent_Blind_Gangster_Part1_MasterCut_42s.mp4";
-  const mediaItem: PostMediaItem = {
-    url: `/api/media/${mediaFilename}`,
-    name: mediaFilename,
-    type: "video",
-    origin: "generated",
-    prompt: winningIdea.title + " - " + winningIdea.hookOpening,
-    mimeType: "video/mp4",
+  return {
+    storyboard,
+    fullNarrationText,
+    srtFormattedSubtitles,
+    onScreenText: "NEVER MESS WITH THE BLIND BOSS'S FAMILY 💀",
+    captionHeadline: "Never mess with the Boss's little princess... or the man who moves in the dark.",
+    hashtags: ["anime", "animeedits", "aianime", "animereels", "manhwa", "mafiaboss", "animeshorts", "cinematic"],
   };
+}
+
+export function buildProductionPackage(
+  winningIdea: ReelIdeaCandidate,
+  analysis: PerformanceAnalysis,
+  options?: { isRealMediaValidated?: boolean }
+): FullProductionPackage {
+  const generated = generateArchetypeStoryboardAndNarration(winningIdea);
+  const { storyboard, fullNarrationText, srtFormattedSubtitles, onScreenText, captionHeadline, hashtags } = generated;
 
   const episodeMatch = winningIdea.seriesEpisode.match(/#(\d+)/);
   const currentEpNum = episodeMatch ? parseInt(episodeMatch[1], 10) : 31;
   const nextEpNum = currentEpNum + 1;
+
+  // Inspect physical disk for media asset
+  const mediaFilename = "An_Intelligent_Blind_Gangster_Part1_MasterCut_42s.mp4";
+  const candidatePaths = [
+    path.join(process.cwd(), ".data", "media", mediaFilename),
+    path.join(process.cwd(), "public", "media", mediaFilename),
+    path.join(process.cwd(), ".next", "standalone", "public", "media", mediaFilename),
+  ];
+  const fileExists = candidatePaths.some((p) => fs.existsSync(p));
+
+  // Do not describe a storyboard or prompt as a finished video unless a real media asset has been generated and validated
+  const isMediaVerified = options?.isRealMediaValidated ?? fileExists;
+  const mediaStatus = isMediaVerified ? "media_validated" : "storyboard_ready";
+  const videoValidated = isMediaVerified;
+
+  const mediaItem: PostMediaItem = {
+    url: `/api/media/${mediaFilename}`,
+    name: mediaFilename,
+    type: "video",
+    origin: isMediaVerified ? "generated" : "edited",
+    prompt: `${winningIdea.title} - ${winningIdea.hookOpening}`,
+    mimeType: "video/mp4",
+  };
 
   let durationToDisplay = winningIdea.targetDurationSeconds;
   if (mediaItem.name?.includes("_42s")) {
@@ -861,12 +1210,14 @@ Tell the Chairman... my daughter's bedtime is nine o'clock. Don't be late.`;
   return {
     selectedIdea: winningIdea,
     title: `🎬 Mafia Boss Dad & Daughter — ${winningIdea.seriesEpisode}: ${winningIdea.title} (${durationToDisplay}s) 🔥`,
+    mediaStatus,
+    videoValidated,
     openingHook: {
       timeframe: "00:00 - 00:03",
       visualHook: storyboard[0].visualDescription,
       soundFx: storyboard[0].nativeAudioCue,
       voiceDialogue: storyboard[0].dialogue,
-      onScreenText: "NEVER MESS WITH THE BLIND BOSS'S FAMILY 💀",
+      onScreenText,
     },
     storyboard,
     narrationAndSubtitles: {
@@ -876,13 +1227,13 @@ Tell the Chairman... my daughter's bedtime is nine o'clock. Don't be late.`;
     socialPackaging: {
       caption:
         `🎬 Mafia Boss Dad & Daughter — ${winningIdea.seriesEpisode}: ${winningIdea.title} (${durationToDisplay}s) 🔥\n\n` +
-        `Never mess with the Boss's little princess... or the man who moves in the dark.\n\n` +
-        `"Close your ears, sweetie. Daddy needs to teach five men how to knock." 💀\n\n` +
+        `${captionHeadline}\n\n` +
+        `${storyboard[0].dialogue} 💀\n\n` +
         `Who do you think sent this hit squad? The Chairman or the Osaka Syndicate? Drop your theories below! 👇\n\n` +
         `📺 Watch all episodes & subscribe for Episode #${nextEpNum}!\n\n` +
-        `#anime #animeedits #aianime #animereels #manhwa #mafiaboss #animeshorts #cinematic`,
-      hashtags: ["anime", "animeedits", "aianime", "animereels", "manhwa", "mafiaboss", "animeshorts", "cinematic"],
-      pinnedCommentPrompt: "Drop a 🔥 if you knew Ren was going to turn off the lights! Who sent these men?",
+        hashtags.map((h) => `#${h}`).join(" "),
+      hashtags,
+      pinnedCommentPrompt: `Drop a 🔥 if you knew Ren was going to turn off the lights! Who sent these men?`,
     },
     attachedMedia: mediaItem,
   };
@@ -949,6 +1300,10 @@ export async function executeContentDirectorCycle(params: {
         `MediaIntegrityError: Video asset '${mediaFilename}' failed integrity validation: ${validation.error}. Content-production cycle stopped without creating a draft.`
       );
     }
+
+    productionPackage.videoValidated = true;
+    productionPackage.mediaStatus = "media_validated";
+    productionPackage.attachedMedia.origin = "generated";
 
     // 5. Save strictly as DRAFT in posts table (Human-in-the-Loop)
     const [savedPost] = await db

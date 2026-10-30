@@ -75,10 +75,20 @@ export function checkMp4Signature(buffer: Buffer): { valid: boolean; reason?: st
   return { valid: false, reason: `Missing 'ftyp' box signature at offset 4 (found '${boxType}')` };
 }
 
+export interface VideoValidationOptions {
+  ffprobePath?: string;
+  allowHeaderOnlyFallback?: boolean;
+}
+
 /**
- * Validates a video file on disk using binary inspection and ffprobe (when available).
+ * Validates a video file on disk using binary inspection and ffprobe.
+ * Fails safely if FFprobe cannot confirm a playable video stream and positive duration.
+ * Does not accept an unverified video merely because its header looks valid when FFprobe fails.
  */
-export async function validateVideoAsset(filePath: string): Promise<VideoValidationResult> {
+export async function validateVideoAsset(
+  filePath: string,
+  options?: VideoValidationOptions
+): Promise<VideoValidationResult> {
   // 1. Physical existence check
   if (!fs.existsSync(filePath)) {
     return {
@@ -122,9 +132,10 @@ export async function validateVideoAsset(filePath: string): Promise<VideoValidat
     };
   }
 
-  // 4. FFprobe validation (if ffprobe is available on the system PATH)
+  // 4. Strict FFprobe validation
+  const ffprobeCmd = options?.ffprobePath || process.env.FFPROBE_PATH || "ffprobe";
   try {
-    const { stdout } = await execFileAsync("ffprobe", [
+    const { stdout } = await execFileAsync(ffprobeCmd, [
       "-v",
       "error",
       "-select_streams",
@@ -143,16 +154,16 @@ export async function validateVideoAsset(filePath: string): Promise<VideoValidat
     if (!videoStream || !videoStream.codec_name) {
       return {
         valid: false,
-        error: "ffprobe could not identify a valid video stream in the media container.",
+        error: "FFprobe could not identify a valid video stream in the media container.",
         metadata: { sizeBytes: stat.size },
         toolUsed: "ffprobe",
       };
     }
 
-    if (duration <= 0) {
+    if (duration <= 0 || isNaN(duration)) {
       return {
         valid: false,
-        error: "ffprobe reported invalid or zero video duration.",
+        error: "FFprobe reported invalid or zero video duration.",
         metadata: { sizeBytes: stat.size },
         toolUsed: "ffprobe",
       };
@@ -169,14 +180,33 @@ export async function validateVideoAsset(filePath: string): Promise<VideoValidat
       },
       toolUsed: "ffprobe",
     };
-  } catch {
-    // ffprobe not installed or failed to execute — fallback to verified binary header check
+  } catch (err: any) {
+    // If ffprobe binary is not installed / not found
+    if (err.code === "ENOENT") {
+      if (options?.allowHeaderOnlyFallback === true) {
+        return {
+          valid: true,
+          metadata: {
+            sizeBytes: stat.size,
+          },
+          toolUsed: "binary_header_validator",
+        };
+      }
+      return {
+        valid: false,
+        error: "Validation failed safely: FFprobe is not installed or not available on PATH; cannot confirm a playable video stream and positive duration.",
+        metadata: { sizeBytes: stat.size },
+        toolUsed: "ffprobe",
+      };
+    }
+
+    // FFprobe failed to decode container (corrupt, broken moov, truncated)
+    const errorDetails = err.stderr ? err.stderr.toString().trim() : err.message;
     return {
-      valid: true,
-      metadata: {
-        sizeBytes: stat.size,
-      },
-      toolUsed: "binary_header_validator",
+      valid: false,
+      error: `FFprobe failed to decode video container (corrupt or unplayable media stream): ${errorDetails}`,
+      metadata: { sizeBytes: stat.size },
+      toolUsed: "ffprobe",
     };
   }
 }

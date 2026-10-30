@@ -209,6 +209,72 @@ describe("Phase 2: Autonomous Content Director Unit & Integration Tests", () => 
     assert.ok(pkg.attachedMedia.url.endsWith(".mp4"));
   });
 
+  it("4a. Storyboard consistency: High-IQ Checkmate produces boardroom checkmate visuals, dialogues, and narration", () => {
+    const ranked = generateAndRankIdeas(mockAnalysis);
+    const checkmateIdea = ranked.find((i) => i.archetype === "High-IQ Checkmate")!;
+    assert.ok(checkmateIdea, "High-IQ Checkmate candidate idea must exist");
+
+    const pkg = buildProductionPackage(checkmateIdea, mockAnalysis);
+
+    // Verify storyboard scene 1 corresponds to boardroom checkmate
+    assert.equal(pkg.storyboard[0].name, "The Boardroom Checkmate Hook");
+    assert.ok(pkg.storyboard[0].visualDescription.toLowerCase().includes("boardroom") || pkg.storyboard[0].visualDescription.toLowerCase().includes("calculator"));
+    assert.ok(pkg.storyboard[0].veoPrompt.toLowerCase().includes("boardroom") || pkg.storyboard[0].veoPrompt.toLowerCase().includes("calculator"));
+    assert.ok(pkg.storyboard[0].dialogue.toLowerCase().includes("debt") || pkg.storyboard[0].dialogue.toLowerCase().includes("boardroom"));
+
+    // Verify narration and dialogue correspond to High-IQ Checkmate (not daughter bed time)
+    assert.ok(pkg.narrationAndSubtitles.fullNarrationText.toLowerCase().includes("debt") || pkg.narrationAndSubtitles.fullNarrationText.toLowerCase().includes("checkmate"));
+    assert.ok(!pkg.narrationAndSubtitles.fullNarrationText.toLowerCase().includes("close your ears, sweetie"), "High-IQ checkmate must not use reluctant guardian daughter lines");
+    assert.ok(pkg.openingHook.onScreenText.includes("CHECKMATE"));
+    assert.ok(pkg.socialPackaging.hashtags.includes("highiq") || pkg.socialPackaging.hashtags.includes("checkmate"));
+  });
+
+  it("4b. Storyboard consistency: Sound-First ASMR produces foley rain umbrella alleyway visuals and dialogues", () => {
+    const ranked = generateAndRankIdeas(mockAnalysis);
+    const asmrIdea = ranked.find((i) => i.archetype === "Sound-First ASMR")!;
+    assert.ok(asmrIdea, "Sound-First ASMR candidate idea must exist");
+
+    const pkg = buildProductionPackage(asmrIdea, mockAnalysis);
+
+    // Verify scene 1 corresponds to rain on umbrella
+    assert.equal(pkg.storyboard[0].name, "The Foley Atmosphere Sensory Immersion");
+    assert.ok(pkg.storyboard[0].visualDescription.toLowerCase().includes("umbrella") || pkg.storyboard[0].visualDescription.toLowerCase().includes("rain"));
+    assert.ok(pkg.storyboard[0].veoPrompt.toLowerCase().includes("umbrella") || pkg.storyboard[0].veoPrompt.toLowerCase().includes("rain"));
+    assert.ok(pkg.storyboard[0].nativeAudioCue.toLowerCase().includes("rain"));
+
+    // Verify narration corresponds to ASMR alleyway dialogue
+    assert.ok(pkg.narrationAndSubtitles.fullNarrationText.toLowerCase().includes("rain"));
+    assert.ok(!pkg.narrationAndSubtitles.fullNarrationText.toLowerCase().includes("five men how to knock"));
+    assert.ok(pkg.openingHook.onScreenText.includes("HEADPHONES"));
+    assert.ok(pkg.socialPackaging.hashtags.includes("asmr") || pkg.socialPackaging.hashtags.includes("sounddesign"));
+  });
+
+  it("4c. Storyboard consistency: Sensory Paradox produces obsidian crystal chess master visuals and dialogues", () => {
+    const ranked = generateAndRankIdeas(mockAnalysis);
+    const sensoryIdea = ranked.find((i) => i.archetype === "Sensory Paradox")!;
+    assert.ok(sensoryIdea, "Sensory Paradox candidate idea must exist");
+
+    const pkg = buildProductionPackage(sensoryIdea, mockAnalysis);
+
+    // Verify scene 1 corresponds to crystal chess table / sensory paradox
+    assert.equal(pkg.storyboard[0].name, "The Sensory Paradox Hook");
+    assert.ok(pkg.storyboard[0].visualDescription.toLowerCase().includes("chess") || pkg.storyboard[0].visualDescription.toLowerCase().includes("crystal"));
+    assert.ok(pkg.storyboard[0].veoPrompt.toLowerCase().includes("chess") || pkg.storyboard[0].veoPrompt.toLowerCase().includes("crystal"));
+    assert.ok(pkg.narrationAndSubtitles.fullNarrationText.toLowerCase().includes("master") || pkg.narrationAndSubtitles.fullNarrationText.toLowerCase().includes("checkmate"));
+    assert.ok(pkg.openingHook.onScreenText.includes("GRANDMASTER"));
+  });
+
+  it("4d. Storyboard consistency: Does not claim finished video unless media asset has been generated and validated", () => {
+    const ranked = generateAndRankIdeas(mockAnalysis);
+    const idea = ranked[0];
+
+    // Explicitly unverified media
+    const pkg = buildProductionPackage(idea, mockAnalysis, { isRealMediaValidated: false });
+    assert.equal(pkg.videoValidated, false, "Must not claim finished video when media has not been validated");
+    assert.equal(pkg.mediaStatus, "storyboard_ready", "Media status must be storyboard_ready");
+    assert.equal(pkg.attachedMedia.origin, "edited");
+  });
+
   // ==========================================
   // 2. PRIORITY 2: SEPARATE LIVE ANALYTICS FROM FIXTURES
   // ==========================================
@@ -271,6 +337,110 @@ describe("Phase 2: Autonomous Content Director Unit & Integration Tests", () => 
     assert.ok(analysis.error?.includes("historical fixture"));
   });
 
+  it("7a. Evidence-based analytics: Missing views returns dataSource 'insufficient_data' and provenHooks with avgViews: null", async () => {
+    const missingViewsPosts = [
+      {
+        id: "post_no_views_1",
+        metaPostId: "meta_nv_1",
+        videoId: "v_nv_1",
+        text: "Anime post with null views",
+        postedAt: new Date(),
+        likes: 12,
+        comments: 0,
+        shares: 1,
+        views: null, // telemetry unavailable
+        lengthSeconds: 52,
+      },
+    ];
+
+    const analysis = await analyzeChannelPerformance({
+      userId: "00000000-0000-0000-0000-000000000000",
+      campaignId: 1,
+      overrideAnalyticsData: missingViewsPosts,
+    });
+
+    assert.equal(analysis.dataSource, "insufficient_data", "Must return explicit insufficient_data when view telemetry is missing");
+    assert.equal(analysis.topPerformingReels.length, 0, "No reels should be ranked as top performing without views");
+    assert.ok(analysis.provenHooks.every((h) => h.avgViews === null), "Proven hooks must have avgViews: null when views are missing");
+    assert.ok(analysis.provenHooks.every((h) => h.isMeasured === false && h.measurementBasis === "heuristic"));
+
+    const ranked = generateAndRankIdeas(analysis);
+    assert.equal(ranked[0].scoringBasis.retentionMeasured, false);
+    assert.ok(ranked[0].scoringBasis.methodology.toLowerCase().includes("insufficient channel evidence"));
+  });
+
+  it("7b. Evidence-based analytics: Missing retention sets retentionMeasured: false and heuristic retention methodology", async () => {
+    const missingRetentionPosts = [
+      {
+        id: "post_ret_missing_1",
+        metaPostId: "meta_ret_1",
+        videoId: "v_ret_1",
+        title: "The Billionaire Checkmate & Audit Reversal",
+        text: "The Billionaire Checkmate & Audit Reversal",
+        postedAt: new Date(),
+        likes: 450,
+        comments: 12,
+        shares: 30,
+        views: 280000,
+        lengthSeconds: 52,
+        insights: undefined, // Retention telemetry missing
+      },
+    ];
+
+    const analysis = await analyzeChannelPerformance({
+      userId: "00000000-0000-0000-0000-000000000000",
+      campaignId: 1,
+      overrideAnalyticsData: missingRetentionPosts,
+    });
+
+    assert.equal(analysis.dataSource, "live");
+    assert.equal(analysis.topPerformingReels[0].retentionMeasured, false, "Must not claim retentionMeasured when telemetry is missing");
+
+    const ranked = generateAndRankIdeas(analysis);
+    assert.equal(ranked[0].scoringBasis.retentionMeasured, false);
+    assert.ok(
+      ranked[0].scoringBasis.methodology.toLowerCase().includes("heuristic retention"),
+      "Methodology must distinguish heuristic retention from measured telemetry"
+    );
+  });
+
+  it("7c. Evidence-based analytics: Unmatched archetypes have isMeasured: false, avgViews: null, and are labeled heuristic", async () => {
+    const singleArchetypePosts = [
+      {
+        id: "post_single_iq",
+        metaPostId: "meta_iq",
+        videoId: "v_iq",
+        title: "The Billionaire Checkmate & Audit Reversal",
+        text: "The Billionaire Checkmate & Audit Reversal",
+        postedAt: new Date(),
+        likes: 800,
+        comments: 20,
+        shares: 50,
+        views: 350000,
+        lengthSeconds: 52,
+      },
+    ];
+
+    const analysis = await analyzeChannelPerformance({
+      userId: "00000000-0000-0000-0000-000000000000",
+      campaignId: 1,
+      overrideAnalyticsData: singleArchetypePosts,
+    });
+
+    const highIqHook = analysis.provenHooks.find((h) => h.archetype === "High-IQ Checkmate")!;
+    assert.ok(highIqHook, "High-IQ Checkmate hook must exist");
+    assert.equal(highIqHook.isMeasured, true, "Matched archetype must be marked isMeasured: true");
+    assert.equal(highIqHook.measurementBasis, "measured");
+    assert.equal(highIqHook.avgViews, 350000, "Matched archetype must reflect real measured views");
+
+    const sensoryHook = analysis.provenHooks.find((h) => h.archetype === "Sensory Paradox")!;
+    assert.ok(sensoryHook);
+    assert.equal(sensoryHook.isMeasured, false, "Unmatched archetype must have isMeasured: false");
+    assert.equal(sensoryHook.measurementBasis, "heuristic");
+    assert.equal(sensoryHook.avgViews, null, "Unmatched archetype must NOT fabricate a fake view number");
+    assert.ok(sensoryHook.example.includes("Heuristic recommendation"));
+  });
+
   // ==========================================
   // 3. PRIORITY 1: NEVER CREATE FAKE VIDEO ASSETS
   // ==========================================
@@ -285,6 +455,53 @@ describe("Phase 2: Autonomous Content Director Unit & Integration Tests", () => 
 
     assert.equal(val.valid, false, "Placeholder file must fail validation");
     assert.ok(val.error?.includes("suspiciously small") || val.error?.includes("Media integrity violation"));
+  });
+
+  it("8a. Strict video validation: Rejects corrupt MP4 even if binary header contains valid ftyp box", async () => {
+    const corruptMp4File = path.join(process.cwd(), ".data", "media", "test_corrupt_with_valid_header.mp4");
+    fs.mkdirSync(path.dirname(corruptMp4File), { recursive: true });
+
+    // Construct 5000 bytes: valid 24-byte ftyp box followed by corrupt random zeros
+    const header = Buffer.from([
+      0x00, 0x00, 0x00, 0x18, // 24 bytes box size
+      0x66, 0x74, 0x79, 0x70, // 'ftyp'
+      0x69, 0x73, 0x6f, 0x6d, // 'isom'
+      0x00, 0x00, 0x02, 0x00, // minor version
+      0x69, 0x73, 0x6f, 0x6d, // compatible brand 'isom'
+      0x6d, 0x70, 0x34, 0x31, // compatible brand 'mp41'
+    ]);
+    const payload = Buffer.alloc(5000, 0);
+    fs.writeFileSync(corruptMp4File, Buffer.concat([header, payload]));
+
+    const val = await validateVideoAsset(corruptMp4File);
+    fs.unlinkSync(corruptMp4File);
+
+    assert.equal(val.valid, false, "Must not accept a corrupt MP4 merely because its 128-byte header has an ftyp box");
+    assert.ok(val.error?.includes("FFprobe failed to decode") || val.error?.includes("corrupt"));
+  });
+
+  it("8b. Strict video validation: Fails safely when FFprobe is missing or unavailable on PATH", async () => {
+    const realVideo = path.join(process.cwd(), "public", "media", "An_Intelligent_Blind_Gangster_Part1_MasterCut_42s.mp4");
+    if (!fs.existsSync(realVideo)) return;
+
+    const val = await validateVideoAsset(realVideo, {
+      ffprobePath: "nonexistent_ffprobe_executable_xyz",
+    });
+
+    assert.equal(val.valid, false, "Must fail safely when FFprobe cannot verify video stream and duration");
+    assert.ok(val.error?.includes("Validation failed safely") || val.error?.includes("not installed"));
+  });
+
+  it("8c. Strict video validation: Successfully verifies authentic playable MP4 file with positive duration and stream info", async () => {
+    const realVideo = path.join(process.cwd(), "public", "media", "An_Intelligent_Blind_Gangster_Part1_MasterCut_42s.mp4");
+    if (!fs.existsSync(realVideo)) return;
+
+    const val = await validateVideoAsset(realVideo);
+    assert.equal(val.valid, true, "Authentic mastercut MP4 must pass validation");
+    assert.equal(val.toolUsed, "ffprobe");
+    assert.ok(val.metadata !== undefined);
+    assert.ok(val.metadata.durationSeconds! > 40, "Must confirm positive video duration (> 40s)");
+    assert.equal(val.metadata.videoCodec, "h264");
   });
 
   it("9. Priority 1: executeContentDirectorCycle stops and throws MediaIntegrityError when media is missing or invalid", async () => {
