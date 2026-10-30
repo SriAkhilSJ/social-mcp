@@ -14,6 +14,8 @@ import {
 } from "../lib/director/content-director";
 import { validateVideoAsset } from "../lib/media/video-validator";
 import { inspectVideoAsset } from "../lib/media/video-inspector";
+import { recordDraftTombstone, isDraftTombstoned, getTombstonedDraftIds } from "../lib/tombstones";
+import { fetchFacebookPageAnalytics } from "../lib/social/facebook";
 import { getDb } from "../db";
 import { posts, contentDrafts, campaignMemories, campaigns, users } from "../db/schema";
 import { eq, and } from "drizzle-orm";
@@ -1082,6 +1084,38 @@ describe("Phase 2: Autonomous Content Director Unit & Integration Tests", () => 
     assert.equal(unmatchedCheckmate.confidence, "insufficient_sample");
     assert.equal(unmatchedCheckmate.isMeasured, false);
     assert.ok(unmatchedCheckmate.conclusion.includes("Heuristic recommendation"));
+  });
+
+  it("15. Tombstone Deletion Persistence: manually deleted drafts stay tombstoned across simulated restarts", async () => {
+    // Record tombstone for draft 9
+    await recordDraftTombstone(9, "Parent-Teacher Conference in Blood", "user_requested_deletion");
+
+    // Must be tombstoned immediately
+    const isTombstoned = await isDraftTombstoned(9);
+    assert.equal(isTombstoned, true, "Draft 9 must be confirmed tombstoned");
+
+    // Simulated container restart: verify from tombstone file on disk
+    const tombstoneFile = path.join(process.cwd(), ".data", "tombstones.json");
+    assert.ok(fs.existsSync(tombstoneFile), "Tombstone backup file must exist on disk");
+    const onDiskList = JSON.parse(fs.readFileSync(tombstoneFile, "utf-8"));
+    const found = onDiskList.find((item: any) => item.draftId === 9);
+    assert.ok(found, "Draft 9 must be present in on-disk tombstone registry");
+
+    const allTombstoned = getTombstonedDraftIds();
+    assert.ok(allTombstoned.includes(9), "Tombstone IDs list must include 9");
+  });
+
+  it("16. Draft ID Resolution: single digit targetPostId '9' never matches a Facebook Reel URL containing digit 9", async () => {
+    // When querying Facebook posts with targetPostId '9', it must not match Reel 1593302406155143 merely because 9 is in the URL
+    const results = await fetchFacebookPageAnalytics({
+      pageId: "1316616991525561",
+      pageAccessToken: "demo",
+      targetPostId: "9",
+      allowFixtures: true,
+    });
+
+    // None of the historical posts have id, metaPostId, videoId, or reelId equal to "9"
+    assert.equal(results.length, 0, "targetPostId '9' must return 0 Facebook posts (preventing false URL matching)");
   });
 
   it("cleanup: exits cleanly", () => {

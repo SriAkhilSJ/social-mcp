@@ -19,6 +19,7 @@ import { getRequestScope } from "@/lib/request-scope";
 import { getOrBootstrapWorkspaceUser } from "@/lib/auth";
 import { dispatchPostViaMcp, getUserConnectedAccounts } from "@/lib/mcp/client";
 import { decryptSecret } from "@/lib/crypto/secrets";
+import { isDraftTombstoned, recordDraftTombstone, getTombstonedDraftIds } from "@/lib/tombstones";
 import { fetchFacebookPageAnalytics, fetchFacebookPageOverview } from "@/lib/social/facebook";
 import { executeContentDirectorCycle, evaluateChannelPerformance } from "@/lib/director/content-director";
 import { inspectVideoAsset } from "@/lib/media/video-inspector";
@@ -61,48 +62,39 @@ function safeIso(val: unknown): string | null {
   }
 }
 
-async function ensureDraft9Exists(userId: string, campaignId: number) {
-  const db = await getDb();
-  try {
-    const [existingDraft9] = await db
-      .select()
-      .from(posts)
-      .where(eq(posts.id, 9))
-      .limit(1);
-
-    if (!existingDraft9) {
-      await db.insert(posts).values({
-        id: 9,
-        userId,
-        campaignId,
-        title: "🎬 Mafia Boss Dad & Daughter — Episode #31: Parent-Teacher Conference in Blood (42s) 🔥",
-        caption: `🎬 Mafia Boss Dad & Daughter — Episode #31: Parent-Teacher Conference in Blood (42s) 🔥\n\nNever mess with the Boss's little princess... or the man who moves in the dark.\n\n"Close your ears, sweetie. Daddy needs to teach five men how to knock." 💀\n\nWho do you think sent this hit squad? The Chairman or the Osaka Syndicate? Drop your theories below! 👇\n\n📺 Watch all episodes & subscribe for Episode #32!\n\n#anime #animeedits #aianime #animereels #manhwa #mafiaboss #animeshorts #cinematic`,
-        platforms: ["facebook", "instagram"],
-        status: "draft",
-        media: [
-          {
-            url: "/api/media/An_Intelligent_Blind_Gangster_Part1_MasterCut_42s.mp4",
-            name: "An_Intelligent_Blind_Gangster_Part1_MasterCut_42s.mp4",
-            type: "video",
-            origin: "generated",
-            prompt: "Parent-Teacher Conference in Blood - Ren Kurokawa sits in a tiny elementary school chair in a bespoke three-piece suit holding his daughter's crayon drawing.",
-            mimeType: "video/mp4",
-          },
-        ],
-        scheduledAt: null,
-      });
+function getDeploymentInfo() {
+  let commitSha = process.env.RENDER_GIT_COMMIT || "";
+  let builtAt = "";
+  let deployId = process.env.RENDER_DEPLOY_ID || null;
+  const candidates = [
+    path.join(process.cwd(), "public", "build-info.json"),
+    path.join(process.cwd(), ".next", "standalone", "public", "build-info.json"),
+  ];
+  for (const c of candidates) {
+    try {
+      if (fs.existsSync(c)) {
+        const info = JSON.parse(fs.readFileSync(c, "utf-8"));
+        if (info.commitSha) commitSha = info.commitSha;
+        if (info.builtAt) builtAt = info.builtAt;
+        if (info.renderDeployId) deployId = info.renderDeployId;
+        break;
+      }
+    } catch {
+      // ignore
     }
-  } catch {
-    // Ignore duplicate constraint errors during race conditions
   }
+  return {
+    commitSha: commitSha || "unknown",
+    builtAt: builtAt || new Date().toISOString(),
+    renderDeployId: deployId,
+    serviceId: "srv-dbh689mc6qcc7380j32g",
+    environment: process.env.NODE_ENV || "production",
+  };
 }
 
 async function resolveScope() {
-  let scope = await getRequestScope();
-  if (scope) {
-    await ensureDraft9Exists(scope.userId, scope.campaignId);
-    return scope;
-  }
+  const existingScope = await getRequestScope();
+  if (existingScope) return existingScope;
 
   const user = await getOrBootstrapWorkspaceUser();
   if (!user) return null;
@@ -130,8 +122,6 @@ async function resolveScope() {
       .set({ activeCampaignId: newCampaign.id })
       .where(eq(users.id, user.id));
   }
-
-  await ensureDraft9Exists(user.id, activeCampaign.id);
 
   return {
     userId: user.id,
@@ -172,15 +162,18 @@ async function gatherMonitoringData() {
       .orderBy(desc(posts.id))
       .limit(20);
 
-    allPosts = dbPosts.map((p) => ({
-      id: p.id,
-      title: p.title,
-      caption: p.caption,
-      status: p.status,
-      media: p.media,
-      platforms: p.platforms,
-      scheduledAt: safeIso(p.scheduledAt),
-    }));
+    const tombstoned = getTombstonedDraftIds();
+    allPosts = dbPosts
+      .filter((p) => !tombstoned.includes(p.id))
+      .map((p) => ({
+        id: p.id,
+        title: p.title,
+        caption: p.caption,
+        status: p.status,
+        media: p.media,
+        platforms: p.platforms,
+        scheduledAt: safeIso(p.scheduledAt),
+      }));
   } catch (err) {
     console.error("Error querying posts in MCP:", err);
   }
@@ -286,6 +279,7 @@ async function gatherMonitoringData() {
       status: "operational",
       humanInTheLoopLock: "ENFORCED (Draft-First)",
       timestamp: new Date().toISOString(),
+      deployment: getDeploymentInfo(),
     },
     openPostInternalQueue: {
       totalCampaignDrafts: allPosts.length,
@@ -1178,6 +1172,34 @@ export async function POST(req: Request) {
 
       // CASE A: SPECIFIC POST FILTERING
       if (targetPostId) {
+        if (!isNaN(Number(targetPostId)) && (await isDraftTombstoned(Number(targetPostId)))) {
+          return NextResponse.json(
+            {
+              jsonrpc: "2.0",
+              id,
+              result: {
+                content: [
+                  {
+                    type: "text",
+                    text: JSON.stringify(
+                      {
+                        success: false,
+                        isFilteredByPostId: true,
+                        requestedPostId: targetPostId,
+                        status: "tombstoned",
+                        isTombstoned: true,
+                        message: `Draft #${targetPostId} was permanently deleted and tombstoned. It is absent and will not be resurrected.`,
+                      },
+                      null,
+                      2
+                    ),
+                  },
+                ],
+              },
+            },
+            { headers: CORS_HEADERS }
+          );
+        }
         // Check local OpenPost draft database
         let localDraft = !isNaN(Number(targetPostId))
           ? allPosts.find((p) => p.id === Number(targetPostId))
@@ -1467,6 +1489,9 @@ export async function POST(req: Request) {
           .limit(limit);
       }
 
+      const tombstonedIds = getTombstonedDraftIds();
+      dbPosts = dbPosts.filter((p) => !tombstonedIds.includes(p.id));
+
       let listOverview = {
         name: "AnimeEdits",
         pageId: "1316616991525561",
@@ -1626,9 +1651,18 @@ export async function POST(req: Request) {
       const deleteAll = Boolean(args.all || args.deleteAll);
 
       if (deleteAll) {
+        const draftsToDelete = await db
+          .select({ id: posts.id, title: posts.title })
+          .from(posts)
+          .where(eq(posts.status, "draft"));
+
+        for (const d of draftsToDelete) {
+          await recordDraftTombstone(d.id, d.title, "user_cleared_all_drafts");
+        }
+
         const deleted = await db
           .delete(posts)
-          .where(and(eq(posts.userId, scope.userId), eq(posts.status, "draft")))
+          .where(eq(posts.status, "draft"))
           .returning();
 
         return NextResponse.json(
@@ -1643,7 +1677,8 @@ export async function POST(req: Request) {
                     {
                       success: true,
                       deletedCount: deleted.length,
-                      message: `Successfully deleted ${deleted.length} pending draft(s). Clean slate ready!`,
+                      tombstonedIds: draftsToDelete.map((d) => d.id),
+                      message: `Successfully deleted and tombstoned ${deleted.length} pending draft(s). Clean slate ready!`,
                     },
                     null,
                     2
@@ -1667,21 +1702,20 @@ export async function POST(req: Request) {
         );
       }
 
-      const [deleted] = await db
-        .delete(posts)
-        .where(and(eq(posts.id, postId), eq(posts.userId, scope.userId)))
-        .returning();
+      const existing = await db
+        .select()
+        .from(posts)
+        .where(eq(posts.id, postId))
+        .limit(1);
 
-      if (!deleted) {
-        return NextResponse.json(
-          {
-            jsonrpc: "2.0",
-            id,
-            error: { code: -32602, message: `Post #${postId} not found` },
-          },
-          { headers: CORS_HEADERS }
-        );
+      let deletedTitle: string | undefined = undefined;
+      if (existing.length > 0) {
+        deletedTitle = existing[0].title;
+        await db.delete(posts).where(eq(posts.id, postId));
       }
+
+      // Record durable tombstone so this draft ID is never resurrected across container restarts
+      await recordDraftTombstone(postId, deletedTitle, "user_requested_deletion");
 
       return NextResponse.json(
         {
@@ -1694,8 +1728,9 @@ export async function POST(req: Request) {
                 text: JSON.stringify(
                   {
                     success: true,
-                    deletedId: deleted.id,
-                    message: `Post #${postId} deleted successfully.`,
+                    deletedId: postId,
+                    tombstoned: true,
+                    message: `Post #${postId} deleted successfully and permanently tombstoned. It will not be recreated.`,
                   },
                   null,
                   2
@@ -1778,6 +1813,31 @@ export async function POST(req: Request) {
     // J2. INSPECT VIDEO
     if (toolName === "inspect_video" || toolName === "openpost_inspect_video") {
       try {
+        if (args.draftId && (await isDraftTombstoned(Number(args.draftId)))) {
+          return NextResponse.json(
+            {
+              jsonrpc: "2.0",
+              id,
+              result: {
+                content: [
+                  {
+                    type: "text",
+                    text: JSON.stringify(
+                      {
+                        success: false,
+                        error: `Draft #${args.draftId} has been deleted and permanently tombstoned. It cannot be inspected.`,
+                      },
+                      null,
+                      2
+                    ),
+                  },
+                ],
+              },
+            },
+            { headers: CORS_HEADERS }
+          );
+        }
+
         let resolvedPath = args.filePath ? String(args.filePath).trim() : "";
 
         if (!resolvedPath && args.mediaUrl) {

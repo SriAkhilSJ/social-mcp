@@ -30,9 +30,13 @@ export async function GET(
   // Search storage locations in order of priority
   const candidatePaths = [
     path.join(process.cwd(), ".data", "media", safeName),
+    path.join(process.cwd(), ".data", "media", "frames", safeName),
     path.join(process.cwd(), "public", "media", safeName),
+    path.join(process.cwd(), "public", "media", "frames", safeName),
     path.join(process.cwd(), ".next", "standalone", "public", "media", safeName),
+    path.join(process.cwd(), ".next", "standalone", "public", "media", "frames", safeName),
     path.join(process.cwd(), ".next", "standalone", ".data", "media", safeName),
+    path.join(process.cwd(), ".next", "standalone", ".data", "media", "frames", safeName),
   ];
 
   const fullPath = candidatePaths.find((p) => fs.existsSync(p));
