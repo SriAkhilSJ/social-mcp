@@ -177,14 +177,35 @@ async function gatherMonitoringData() {
     console.error("Error querying tasks in MCP:", err);
   }
 
-  const mediaDir = path.join(process.cwd(), ".data", "media");
-  let mediaCount = 0;
-  let recentAssets: string[] = [];
-  if (fs.existsSync(mediaDir)) {
-    const files = fs.readdirSync(mediaDir);
-    mediaCount = files.length;
-    recentAssets = files.slice(-6);
+  const candidateMediaDirs = [
+    path.join(process.cwd(), "public", "media"),
+    path.join(process.cwd(), ".data", "media"),
+    path.join(process.cwd(), ".next", "standalone", "public", "media"),
+    path.join(process.cwd(), ".next", "standalone", ".data", "media"),
+  ];
+  const assetSet = new Set<string>();
+  for (const mDir of candidateMediaDirs) {
+    if (fs.existsSync(mDir)) {
+      try {
+        const files = fs.readdirSync(mDir);
+        for (const file of files) {
+          try {
+            const stat = fs.statSync(path.join(mDir, file));
+            if (stat.isFile() && !file.startsWith(".")) {
+              assetSet.add(file);
+            }
+          } catch {
+            // ignore stat error
+          }
+        }
+      } catch {
+        // ignore read error
+      }
+    }
   }
+  const allMediaAssets = Array.from(assetSet).sort();
+  const mediaCount = allMediaAssets.length;
+  const recentAssets = allMediaAssets.slice(-6);
 
   let pageOverview = {
     id: "1316616991525561",

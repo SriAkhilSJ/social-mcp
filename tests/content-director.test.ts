@@ -275,6 +275,129 @@ describe("Phase 2: Autonomous Content Director Unit & Integration Tests", () => 
     assert.equal(pkg.attachedMedia.origin, "edited");
   });
 
+  it("4e. Storyboard consistency: Blind Janitor idea matches broom sweeping, kicked bucket, and founder's oath (never substitutes chess)", () => {
+    const ranked = generateAndRankIdeas(mockAnalysis);
+    const janitorIdea = ranked.find((i) => i.id === "idea_the_janitor_origin_secret")!;
+    assert.ok(janitorIdea, "The blind janitor candidate idea must exist");
+
+    const pkg = buildProductionPackage(janitorIdea, mockAnalysis);
+
+    // Scene 1: sweeping broom outside nightclub and kicked bucket
+    assert.equal(pkg.storyboard[0].name, "The Sweeper's Interruption");
+    assert.ok(pkg.storyboard[0].visualDescription.toLowerCase().includes("broom") || pkg.storyboard[0].visualDescription.toLowerCase().includes("janitor"));
+    assert.ok(pkg.storyboard[0].visualDescription.toLowerCase().includes("bucket") || pkg.storyboard[0].visualDescription.toLowerCase().includes("nightclub"));
+    assert.ok(pkg.storyboard[0].dialogue.toLowerCase().includes("janitor") || pkg.storyboard[0].dialogue.toLowerCase().includes("bucket"));
+
+    // Scene 2 & 3: harassment and founder's bloodline oath
+    assert.ok(pkg.storyboard[1].visualDescription.toLowerCase().includes("club") || pkg.storyboard[1].visualDescription.toLowerCase().includes("enforcers"));
+    assert.ok(pkg.storyboard[2].visualDescription.toLowerCase().includes("broom") || pkg.storyboard[2].visualDescription.toLowerCase().includes("founder"));
+    assert.ok(pkg.storyboard[2].dialogue.toLowerCase().includes("grandfather") || pkg.storyboard[2].dialogue.toLowerCase().includes("dragon"));
+
+    // Narration must NOT substitute unrelated chess or rooftop stories
+    assert.ok(!pkg.narrationAndSubtitles.fullNarrationText.toLowerCase().includes("chess king"), "Janitor storyboard must not contain chess pieces");
+    assert.ok(!pkg.narrationAndSubtitles.fullNarrationText.toLowerCase().includes("heliport"), "Janitor storyboard must not contain rooftop helipad");
+    assert.ok(pkg.openingHook.onScreenText.includes("JANITOR") || pkg.openingHook.onScreenText.includes("KABUKICHO"));
+    assert.ok(pkg.socialPackaging.hashtags.includes("kabukicho") || pkg.socialPackaging.hashtags.includes("underdog"));
+  });
+
+  it("4f. Storyboard consistency: Chess Match idea produces obsidian crystal chess grandmaster sequence", () => {
+    const ranked = generateAndRankIdeas(mockAnalysis);
+    const chessIdea = ranked.find((i) => i.id === "idea_sensory_paradox_chess")!;
+    assert.ok(chessIdea, "Chess candidate idea must exist");
+
+    const pkg = buildProductionPackage(chessIdea, mockAnalysis);
+
+    assert.ok(
+      pkg.storyboard[0].name === "The Sensory Paradox Hook" ||
+      pkg.storyboard[0].name === "The Obsidian King Slide Hook"
+    );
+    assert.ok(pkg.storyboard[0].visualDescription.toLowerCase().includes("obsidian") || pkg.storyboard[0].visualDescription.toLowerCase().includes("chess"));
+    assert.ok(pkg.storyboard[2].name.toLowerCase().includes("checkmate"));
+    assert.ok(pkg.storyboard[2].dialogue.toLowerCase().includes("checkmate"));
+    assert.ok(pkg.openingHook.onScreenText.includes("GRANDMASTER"));
+    assert.ok(pkg.socialPackaging.hashtags.includes("chess"));
+  });
+
+  it("4g. Storyboard consistency: Rooftop Confrontation idea matches helipad, sniper red dot, and lightning rod deflection (never substitutes chess)", () => {
+    const ranked = generateAndRankIdeas(mockAnalysis);
+    const rooftopIdea = ranked.find((i) => i.id === "idea_neon_rooftop_duel")!;
+    assert.ok(rooftopIdea, "Rooftop duel candidate idea must exist");
+
+    const pkg = buildProductionPackage(rooftopIdea, mockAnalysis);
+
+    // Scene 1: red laser sniper dot on dark sunglasses at helipad
+    assert.equal(pkg.storyboard[0].name, "The Sniper Red Dot Hook");
+    assert.ok(pkg.storyboard[0].visualDescription.toLowerCase().includes("helipad") || pkg.storyboard[0].visualDescription.toLowerCase().includes("sniper"));
+    assert.ok(
+      pkg.storyboard[0].dialogue.toLowerCase().includes("laser") ||
+      pkg.storyboard[0].dialogue.toLowerCase().includes("red dot"),
+      "Scene 1 dialogue must reference the sniper laser or red dot"
+    );
+
+    // Scene 3: lightning rod deflection
+    assert.equal(pkg.storyboard[2].name, "The Lightning Rod Deflection");
+    assert.ok(pkg.storyboard[2].visualDescription.toLowerCase().includes("lightning"));
+    assert.ok(pkg.storyboard[2].dialogue.toLowerCase().includes("conductor") || pkg.storyboard[2].dialogue.toLowerCase().includes("lightning"));
+
+    // Narration must NOT substitute chess or janitor
+    assert.ok(!pkg.narrationAndSubtitles.fullNarrationText.toLowerCase().includes("chess"), "Rooftop duel must not contain chess");
+    assert.ok(!pkg.narrationAndSubtitles.fullNarrationText.toLowerCase().includes("janitor"), "Rooftop duel must not contain janitor");
+    assert.ok(pkg.openingHook.onScreenText.includes("CONDUCTOR") || pkg.openingHook.onScreenText.includes("LIGHTNING"));
+  });
+
+  it("4h. Storyboard consistency: Protective-parent concepts match specific situations (school festival vs penthouse defense)", () => {
+    const ranked = generateAndRankIdeas(mockAnalysis);
+    const schoolIdea = ranked.find((i) => i.id === "idea_daughter_school_festival")!;
+    assert.ok(schoolIdea, "School festival idea must exist");
+
+    const schoolPkg = buildProductionPackage(schoolIdea, mockAnalysis);
+
+    // Verify school festival has elementary chair and crayon drawing
+    assert.equal(schoolPkg.storyboard[0].name, "The Elementary School Chair Hook");
+    assert.ok(schoolPkg.storyboard[0].visualDescription.toLowerCase().includes("elementary") || schoolPkg.storyboard[0].visualDescription.toLowerCase().includes("chair"));
+    assert.ok(schoolPkg.storyboard[0].visualDescription.toLowerCase().includes("crayon") || schoolPkg.storyboard[0].visualDescription.toLowerCase().includes("drawing"));
+    assert.ok(schoolPkg.storyboard[2].visualDescription.toLowerCase().includes("usb") || schoolPkg.storyboard[2].visualDescription.toLowerCase().includes("pocket"));
+    assert.ok(schoolPkg.openingHook.onScreenText.includes("SCHOOL") || schoolPkg.openingHook.onScreenText.includes("DAD"));
+
+    // Penthouse defense idea
+    const defenseIdea = ranked.find((i) => i.id === "idea_daughter_protective_vengeance")!;
+    assert.ok(defenseIdea, "Penthouse defense idea must exist");
+
+    const defensePkg = buildProductionPackage(defenseIdea, mockAnalysis);
+    assert.equal(defensePkg.storyboard[0].name, "The Penthouse Scarf Hook");
+    assert.ok(defensePkg.storyboard[0].visualDescription.toLowerCase().includes("scarf"));
+    assert.ok(defensePkg.storyboard[1].visualDescription.toLowerCase().includes("double doors") || defensePkg.storyboard[1].visualDescription.toLowerCase().includes("penthouse"));
+    assert.ok(defensePkg.storyboard[3].dialogue.toLowerCase().includes("bedtime"));
+  });
+
+  it("4i. Storyboard consistency: Incomplete or invalid idea candidate throws explicit StoryboardGenerationError", () => {
+    assert.throws(
+      () => {
+        buildProductionPackage(
+          {
+            id: "incomplete_idea",
+            title: "Missing Fields",
+            seriesEpisode: "Episode #99",
+            archetype: "Sensory Paradox",
+            targetDurationSeconds: 52,
+            hookOpening: "", // missing hookOpening
+            coreConflict: "",
+            emotionalPayoff: "",
+            loopMechanism: "",
+            scores: {} as any,
+            ranking: 1,
+            scoringBasis: {} as any,
+          },
+          mockAnalysis
+        );
+      },
+      (err: any) => {
+        return err instanceof Error && err.message.includes("StoryboardGenerationError");
+      },
+      "Must throw explicit StoryboardGenerationError for incomplete idea"
+    );
+  });
+
   // ==========================================
   // 2. PRIORITY 2: SEPARATE LIVE ANALYTICS FROM FIXTURES
   // ==========================================
@@ -439,6 +562,103 @@ describe("Phase 2: Autonomous Content Director Unit & Integration Tests", () => 
     assert.equal(sensoryHook.measurementBasis, "heuristic");
     assert.equal(sensoryHook.avgViews, null, "Unmatched archetype must NOT fabricate a fake view number");
     assert.ok(sensoryHook.example.includes("Heuristic recommendation"));
+  });
+
+  it("7d. Evidence-based analytics: Missing retention/completion telemetry does NOT claim duration maximizes completion rates", async () => {
+    const postsWithViewsNoRetention = [
+      {
+        id: "post_no_ret_1",
+        metaPostId: "meta_nr_1",
+        videoId: "v_nr_1",
+        text: "The High-IQ Reversal Checkmate",
+        postedAt: new Date(),
+        likes: 120,
+        comments: 4,
+        shares: 10,
+        views: 18000,
+        lengthSeconds: 54,
+        insights: undefined, // no watch time or completion telemetry
+      },
+    ];
+
+    const analysis = await analyzeChannelPerformance({
+      userId: "00000000-0000-0000-0000-000000000000",
+      campaignId: 1,
+      overrideAnalyticsData: postsWithViewsNoRetention,
+    });
+
+    // Duration recommendation explanation must NOT claim to maximize completion rates
+    const insight = analysis.durationSweetSpot.insight.toLowerCase();
+    assert.ok(!insight.includes("maximizes completion rates"), "Must not claim to maximize completion rates without retention telemetry");
+    assert.ok(insight.includes("unmeasured") || insight.includes("benchmark"), "Must explain that completion rate telemetry is unmeasured");
+    assert.equal(analysis.topPerformingReels[0].retentionMeasured, false);
+  });
+
+  it("7e. Evidence-based analytics: Keyword match in title does NOT label a hook as proven without retention metrics", async () => {
+    const keywordOnlyPosts = [
+      {
+        id: "post_kw_1",
+        metaPostId: "meta_kw_1",
+        videoId: "v_kw_1",
+        text: "The High-IQ Reversal and checkmate audit",
+        postedAt: new Date(),
+        likes: 200,
+        comments: 8,
+        shares: 15,
+        views: 45000,
+        lengthSeconds: 52,
+        insights: undefined, // Retention/watch time unmeasured
+      },
+    ];
+
+    const analysis = await analyzeChannelPerformance({
+      userId: "00000000-0000-0000-0000-000000000000",
+      campaignId: 1,
+      overrideAnalyticsData: keywordOnlyPosts,
+    });
+
+    const highIqHook = analysis.provenHooks.find((h) => h.archetype === "High-IQ Checkmate")!;
+    assert.ok(highIqHook, "High-IQ Checkmate hook must exist");
+    assert.equal(highIqHook.isMeasured, true, "Views are measured");
+    assert.equal(highIqHook.isProven, false, "Hook must NOT be labeled proven solely due to keyword match without retention metrics");
+    assert.ok(highIqHook.evidenceNotes?.toLowerCase().includes("unproven") || highIqHook.evidenceNotes?.toLowerCase().includes("keyword-matched"));
+  });
+
+  it("7f. Evidence-based analytics: Measured retention telemetry derives duration sweet spot from watch times and confirms proven hook", async () => {
+    const liveWithRetentionPosts = [
+      {
+        id: "post_ret_measured_1",
+        metaPostId: "meta_rm_1",
+        videoId: "v_rm_1",
+        text: "The High-IQ Reversal and checkmate audit",
+        postedAt: new Date(),
+        likes: 500,
+        comments: 25,
+        shares: 80,
+        views: 95000,
+        lengthSeconds: 52,
+        insights: {
+          avgWatchTimeSeconds: 38.5,
+          replayCount: 420,
+        },
+      },
+    ];
+
+    const analysis = await analyzeChannelPerformance({
+      userId: "00000000-0000-0000-0000-000000000000",
+      campaignId: 1,
+      overrideAnalyticsData: liveWithRetentionPosts,
+    });
+
+    // Duration recommendation derives from measured retention
+    const insight = analysis.durationSweetSpot.insight.toLowerCase();
+    assert.ok(insight.includes("measured retention") || insight.includes("watch time"));
+    assert.ok(insight.includes("38.5s"));
+
+    // Hook backed by measured retention is verified
+    const highIqHook = analysis.provenHooks.find((h) => h.archetype === "High-IQ Checkmate")!;
+    assert.equal(highIqHook.isProven, true, "Hook with measured retention telemetry must have isProven: true");
+    assert.ok(highIqHook.evidenceNotes?.toLowerCase().includes("proven: supported by measured retention"));
   });
 
   // ==========================================
