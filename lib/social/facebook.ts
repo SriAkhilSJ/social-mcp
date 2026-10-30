@@ -831,7 +831,7 @@ export async function fetchFacebookPageAnalytics(
         p.videoId === target ||
         p.reelId === target ||
         p.id.endsWith(`_${target}`) ||
-        (p.postUrl && p.postUrl.includes(target))
+        (target.length >= 6 && p.postUrl && p.postUrl.includes(target))
     );
 
     if (matched) {
@@ -906,7 +906,7 @@ export async function fetchFacebookPageAnalytics(
           p.videoId === target ||
           p.reelId === target ||
           p.id.endsWith(`_${target}`) ||
-          (p.postUrl && p.postUrl.includes(target))
+          (target.length >= 6 && p.postUrl && p.postUrl.includes(target))
       );
       if (benchmarkMatch) {
         return [benchmarkMatch];
