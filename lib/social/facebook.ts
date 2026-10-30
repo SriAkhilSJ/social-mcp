@@ -403,7 +403,27 @@ export const HISTORICAL_BENCHMARK_POSTS: FacebookPostAnalyticsItem[] = [
     metaPostId: "1593302406155143",
     videoId: "1593302406155143",
     reelId: "1593302406155143",
-    text: "WHAT IF YOU RECEIVED A MESSAGE FROM TOMORROW? ⏳ Official AnimeEdits Reel Trailer",
+    text: `🚨 WHAT IF YOU RECEIVED A MESSAGE FROM TOMORROW?
+
+Everyone ignored him. Everyone laughed at him. But nobody knew what was coming…
+
+Until one night, Ren received a message that changed everything. 📱
+
+One student disappears. Nobody remembers him. And Ren's best friend is hiding something terrifying. 👀
+
+But the biggest question is…
+WHAT IF THE PERSON SENDING THE MESSAGES ISN'T A STRANGER? 💀
+
+🎬 EVERYONE IGNORED HIM… UNTIL TOMORROW 🩸
+An original mystery anime series by AnimeEdits.
+
+⏳ EPISODE 1 — COMING SOON.
+
+👇 THEORY TIME!
+Who do you think is behind the mysterious messages?
+1️⃣ Ren's best friend
+2️⃣ Someone from Ren's past
+3️⃣ Ren himself… from the future...`,
     postedAt: new Date("2026-09-01T10:00:00Z"),
     postUrl: "https://www.facebook.com/reel/1593302406155143/",
     likes: 8,

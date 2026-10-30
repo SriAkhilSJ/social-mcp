@@ -16,10 +16,10 @@
 * **TikTok**: 9:16 vertical edits with phonk audio and fast-paced hook editing.
 
 ### 🎬 Core Series & Creative Storylines
-1. **Flagship Series: *An Intelligent Blind Gangster***
-   - **Premise**: The protagonist was **NOT** born blind. He was an elite underworld mastermind betrayed and blinded in a cartel ambush by his own syndicate brothers.
-   - **The Twist**: Losing his sight did not weaken him—it amplified his tactical genius, hearing, and shadow network. He operates from the dark, outplaying rival bosses and corrupt detectives who mistakenly treat him as helpless.
-   - **Visual Style**: Dark psychological crime noir (sharp three-piece dark suits, bespoke tinted sunglasses, rain-soaked neon Tokyo/Seoul streets, and cold, calculating chess moves).
+1. **Flagship Series: *EVERYONE IGNORED HIM… UNTIL TOMORROW***
+   - **Premise**: High school student **Ren** was ignored and laughed at by everyone. But until one night at 3:14 AM, Ren receives a text message that changes everything: a message from tomorrow. Published Benchmark: Facebook Reel `1593302406155143` on page `AnimeEdits` (`1316616991525561`).
+   - **The Twist**: One classmate disappears; nobody else remembers the student existed. Ren's best friend is hiding something terrifying, and an impossible clue suggests the person sending the messages from tomorrow is Ren himself.
+   - **Visual Style**: High-tension psychological anime mystery (rain-soaked Shibuya crossings, glowing smartphone screens in dark rooms, empty school desks, time glitches, and sharp MAPPA/Ufotable suspense pacing).
 2. **Hit Universe: *Mafia Boss Dad & Daughter***
    - **Stats**: Episode #21 pulled **3,801+ likes** and **71 shares**; Episode #19 pulled **131 shares**.
    - **Style**: Overprotective, terrifying underworld kingpin paired with his innocent daughter and an ominous possessed cat.

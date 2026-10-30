@@ -215,59 +215,59 @@ describe("Phase 2: Autonomous Content Director Unit & Integration Tests", () => 
     assert.ok(pkg.attachedMedia.url.endsWith(".mp4"));
   });
 
-  it("4a. Storyboard consistency: High-IQ Checkmate produces boardroom checkmate visuals, dialogues, and narration", () => {
+  it("4a. Storyboard consistency: High-IQ Checkmate produces hallway secret & backpack ringtone visuals, dialogues, and narration", () => {
     const ranked = generateAndRankIdeas(mockAnalysis);
     const checkmateIdea = ranked.find((i) => i.archetype === "High-IQ Checkmate")!;
     assert.ok(checkmateIdea, "High-IQ Checkmate candidate idea must exist");
 
     const pkg = buildProductionPackage(checkmateIdea, mockAnalysis);
 
-    // Verify storyboard scene 1 corresponds to boardroom checkmate
-    assert.equal(pkg.storyboard[0].name, "The Boardroom Checkmate Hook");
-    assert.ok(pkg.storyboard[0].visualDescription.toLowerCase().includes("boardroom") || pkg.storyboard[0].visualDescription.toLowerCase().includes("calculator"));
-    assert.ok(pkg.storyboard[0].veoPrompt.toLowerCase().includes("boardroom") || pkg.storyboard[0].veoPrompt.toLowerCase().includes("calculator"));
-    assert.ok(pkg.storyboard[0].dialogue.toLowerCase().includes("debt") || pkg.storyboard[0].dialogue.toLowerCase().includes("boardroom"));
+    // Verify storyboard scene 1 corresponds to hallway confrontation
+    assert.equal(pkg.storyboard[0].name, "The Hallway Confrontation Hook");
+    assert.ok(pkg.storyboard[0].visualDescription.toLowerCase().includes("locker") || pkg.storyboard[0].visualDescription.toLowerCase().includes("phone"));
+    assert.ok(pkg.storyboard[0].veoPrompt.toLowerCase().includes("locker") || pkg.storyboard[0].veoPrompt.toLowerCase().includes("hallway"));
+    assert.ok(pkg.storyboard[0].dialogue.toLowerCase().includes("locker") || pkg.storyboard[0].dialogue.toLowerCase().includes("phone"));
 
-    // Verify narration and dialogue correspond to High-IQ Checkmate (not daughter bed time)
-    assert.ok(pkg.narrationAndSubtitles.fullNarrationText.toLowerCase().includes("debt") || pkg.narrationAndSubtitles.fullNarrationText.toLowerCase().includes("checkmate"));
+    // Verify narration and dialogue correspond to High-IQ Checkmate
+    assert.ok(pkg.narrationAndSubtitles.fullNarrationText.toLowerCase().includes("backpack") || pkg.narrationAndSubtitles.fullNarrationText.toLowerCase().includes("phone"));
     assert.ok(!pkg.narrationAndSubtitles.fullNarrationText.toLowerCase().includes("close your ears, sweetie"), "High-IQ checkmate must not use reluctant guardian daughter lines");
-    assert.ok(pkg.openingHook.onScreenText.includes("CHECKMATE"));
-    assert.ok(pkg.socialPackaging.hashtags.includes("highiq") || pkg.socialPackaging.hashtags.includes("checkmate"));
+    assert.ok(pkg.openingHook.onScreenText.includes("BEST FRIEND") || pkg.openingHook.onScreenText.includes("SECRET"));
+    assert.ok(pkg.socialPackaging.hashtags.includes("EveryoneIgnoredHim") || pkg.socialPackaging.hashtags.includes("Betrayal"));
   });
 
-  it("4b. Storyboard consistency: Sound-First ASMR produces foley rain umbrella alleyway visuals and dialogues", () => {
+  it("4b. Storyboard consistency: Sound-First ASMR produces foley glitching audio wave visuals and dialogues", () => {
     const ranked = generateAndRankIdeas(mockAnalysis);
-    const asmrIdea = ranked.find((i) => i.archetype === "Sound-First ASMR")!;
+    const asmrIdea = ranked.find((i) => i.id === "idea_voice_note_future_ren")!;
     assert.ok(asmrIdea, "Sound-First ASMR candidate idea must exist");
 
     const pkg = buildProductionPackage(asmrIdea, mockAnalysis);
 
-    // Verify scene 1 corresponds to rain on umbrella
-    assert.equal(pkg.storyboard[0].name, "The Foley Atmosphere Sensory Immersion");
-    assert.ok(pkg.storyboard[0].visualDescription.toLowerCase().includes("umbrella") || pkg.storyboard[0].visualDescription.toLowerCase().includes("rain"));
-    assert.ok(pkg.storyboard[0].veoPrompt.toLowerCase().includes("umbrella") || pkg.storyboard[0].veoPrompt.toLowerCase().includes("rain"));
-    assert.ok(pkg.storyboard[0].nativeAudioCue.toLowerCase().includes("rain"));
+    // Verify scene 1 corresponds to audio waveform / silence
+    assert.equal(pkg.storyboard[0].name, "The Glitching Audio Wave Hook");
+    assert.ok(pkg.storyboard[0].visualDescription.toLowerCase().includes("waveform") || pkg.storyboard[0].visualDescription.toLowerCase().includes("darkness") || pkg.storyboard[0].visualDescription.toLowerCase().includes("screen"));
+    assert.ok(pkg.storyboard[0].veoPrompt.toLowerCase().includes("waveform") || pkg.storyboard[0].veoPrompt.toLowerCase().includes("screen"));
+    assert.ok(pkg.storyboard[0].nativeAudioCue.toLowerCase().includes("whisper") || pkg.storyboard[0].nativeAudioCue.toLowerCase().includes("static") || pkg.storyboard[0].nativeAudioCue.toLowerCase().includes("breathing"));
 
-    // Verify narration corresponds to ASMR alleyway dialogue
-    assert.ok(pkg.narrationAndSubtitles.fullNarrationText.toLowerCase().includes("rain"));
+    // Verify narration corresponds to voice note dialogue
+    assert.ok(pkg.narrationAndSubtitles.fullNarrationText.toLowerCase().includes("audio note") || pkg.narrationAndSubtitles.fullNarrationText.toLowerCase().includes("knocks"));
     assert.ok(!pkg.narrationAndSubtitles.fullNarrationText.toLowerCase().includes("five men how to knock"));
-    assert.ok(pkg.openingHook.onScreenText.includes("HEADPHONES"));
-    assert.ok(pkg.socialPackaging.hashtags.includes("asmr") || pkg.socialPackaging.hashtags.includes("sounddesign"));
+    assert.ok(pkg.openingHook.onScreenText.includes("VOICE") || pkg.openingHook.onScreenText.includes("TOMORROW"));
+    assert.ok(pkg.socialPackaging.hashtags.includes("EveryoneIgnoredHim") || pkg.socialPackaging.hashtags.includes("AnimeASMR"));
   });
 
-  it("4c. Storyboard consistency: Sensory Paradox produces obsidian crystal chess master visuals and dialogues", () => {
+  it("4c. Storyboard consistency: Sensory Paradox produces 3:14 AM vibrating phone visuals and dialogues", () => {
     const ranked = generateAndRankIdeas(mockAnalysis);
     const sensoryIdea = ranked.find((i) => i.archetype === "Sensory Paradox")!;
     assert.ok(sensoryIdea, "Sensory Paradox candidate idea must exist");
 
     const pkg = buildProductionPackage(sensoryIdea, mockAnalysis);
 
-    // Verify scene 1 corresponds to crystal chess table / sensory paradox
-    assert.equal(pkg.storyboard[0].name, "The Sensory Paradox Hook");
-    assert.ok(pkg.storyboard[0].visualDescription.toLowerCase().includes("chess") || pkg.storyboard[0].visualDescription.toLowerCase().includes("crystal"));
-    assert.ok(pkg.storyboard[0].veoPrompt.toLowerCase().includes("chess") || pkg.storyboard[0].veoPrompt.toLowerCase().includes("crystal"));
-    assert.ok(pkg.narrationAndSubtitles.fullNarrationText.toLowerCase().includes("master") || pkg.narrationAndSubtitles.fullNarrationText.toLowerCase().includes("checkmate"));
-    assert.ok(pkg.openingHook.onScreenText.includes("GRANDMASTER"));
+    // Verify scene 1 corresponds to 3:14 AM notification hook
+    assert.equal(pkg.storyboard[0].name, "The 3:14 AM Notification Hook");
+    assert.ok(pkg.storyboard[0].visualDescription.toLowerCase().includes("bedroom") || pkg.storyboard[0].visualDescription.toLowerCase().includes("nightstand") || pkg.storyboard[0].visualDescription.toLowerCase().includes("phone"));
+    assert.ok(pkg.storyboard[0].veoPrompt.toLowerCase().includes("bedroom") || pkg.storyboard[0].veoPrompt.toLowerCase().includes("3:14"));
+    assert.ok(pkg.narrationAndSubtitles.fullNarrationText.toLowerCase().includes("3:14 am") || pkg.narrationAndSubtitles.fullNarrationText.toLowerCase().includes("message"));
+    assert.ok(pkg.openingHook.onScreenText.includes("MESSAGE") || pkg.openingHook.onScreenText.includes("TOMORROW"));
   });
 
   it("4d. Storyboard consistency: Does not claim finished video unless media asset has been generated and validated", () => {
@@ -281,99 +281,96 @@ describe("Phase 2: Autonomous Content Director Unit & Integration Tests", () => 
     assert.equal(pkg.attachedMedia.origin, "edited");
   });
 
-  it("4e. Storyboard consistency: Blind Janitor idea matches broom sweeping, kicked bucket, and founder's oath (never substitutes chess)", () => {
+  it("4e. Storyboard consistency: Message from Tomorrow idea matches dark bedroom, 3:14 AM lock screen, and empty desk prediction (never substitutes unrelated storylines)", () => {
     const ranked = generateAndRankIdeas(mockAnalysis);
-    const janitorIdea = ranked.find((i) => i.id === "idea_the_janitor_origin_secret")!;
-    assert.ok(janitorIdea, "The blind janitor candidate idea must exist");
+    const tomorrowIdea = ranked.find((i) => i.id === "idea_tomorrow_message_314am")!;
+    assert.ok(tomorrowIdea, "The 3:14 AM message from tomorrow candidate idea must exist");
 
-    const pkg = buildProductionPackage(janitorIdea, mockAnalysis);
+    const pkg = buildProductionPackage(tomorrowIdea, mockAnalysis);
 
-    // Scene 1: sweeping broom outside nightclub and kicked bucket
-    assert.equal(pkg.storyboard[0].name, "The Sweeper's Interruption");
-    assert.ok(pkg.storyboard[0].visualDescription.toLowerCase().includes("broom") || pkg.storyboard[0].visualDescription.toLowerCase().includes("janitor"));
-    assert.ok(pkg.storyboard[0].visualDescription.toLowerCase().includes("bucket") || pkg.storyboard[0].visualDescription.toLowerCase().includes("nightclub"));
-    assert.ok(pkg.storyboard[0].dialogue.toLowerCase().includes("janitor") || pkg.storyboard[0].dialogue.toLowerCase().includes("bucket"));
+    // Scene 1: vibrating phone in dark bedroom
+    assert.equal(pkg.storyboard[0].name, "The 3:14 AM Notification Hook");
+    assert.ok(pkg.storyboard[0].visualDescription.toLowerCase().includes("bedroom") || pkg.storyboard[0].visualDescription.toLowerCase().includes("vibrating"));
+    assert.ok(pkg.storyboard[0].visualDescription.toLowerCase().includes("nightstand") || pkg.storyboard[0].visualDescription.toLowerCase().includes("phone"));
+    assert.ok(pkg.storyboard[0].dialogue.toLowerCase().includes("homeroom") || pkg.storyboard[0].dialogue.toLowerCase().includes("desk 4"));
 
-    // Scene 2 & 3: harassment and founder's bloodline oath
-    assert.ok(pkg.storyboard[1].visualDescription.toLowerCase().includes("club") || pkg.storyboard[1].visualDescription.toLowerCase().includes("enforcers"));
-    assert.ok(pkg.storyboard[2].visualDescription.toLowerCase().includes("broom") || pkg.storyboard[2].visualDescription.toLowerCase().includes("founder"));
-    assert.ok(pkg.storyboard[2].dialogue.toLowerCase().includes("grandfather") || pkg.storyboard[2].dialogue.toLowerCase().includes("dragon"));
+    // Scene 2 & 3: classroom whispers and erased desk
+    assert.ok(pkg.storyboard[1].visualDescription.toLowerCase().includes("hallway") || pkg.storyboard[1].visualDescription.toLowerCase().includes("whisper") || pkg.storyboard[1].visualDescription.toLowerCase().includes("students"));
+    assert.ok(pkg.storyboard[2].visualDescription.toLowerCase().includes("desk") || pkg.storyboard[2].visualDescription.toLowerCase().includes("floorboards"));
+    assert.ok(pkg.storyboard[2].dialogue.toLowerCase().includes("daiki") || pkg.storyboard[2].dialogue.toLowerCase().includes("nobody"));
 
     // Narration must NOT substitute unrelated chess or rooftop stories
-    assert.ok(!pkg.narrationAndSubtitles.fullNarrationText.toLowerCase().includes("chess king"), "Janitor storyboard must not contain chess pieces");
-    assert.ok(!pkg.narrationAndSubtitles.fullNarrationText.toLowerCase().includes("heliport"), "Janitor storyboard must not contain rooftop helipad");
-    assert.ok(pkg.openingHook.onScreenText.includes("JANITOR") || pkg.openingHook.onScreenText.includes("KABUKICHO"));
-    assert.ok(pkg.socialPackaging.hashtags.includes("kabukicho") || pkg.socialPackaging.hashtags.includes("underdog"));
+    assert.ok(!pkg.narrationAndSubtitles.fullNarrationText.toLowerCase().includes("chess king"), "Mystery storyboard must not contain chess pieces");
+    assert.ok(!pkg.narrationAndSubtitles.fullNarrationText.toLowerCase().includes("heliport"), "Mystery storyboard must not contain rooftop helipad");
+    assert.ok(pkg.openingHook.onScreenText.includes("MESSAGE") || pkg.openingHook.onScreenText.includes("TOMORROW"));
+    assert.ok(pkg.socialPackaging.hashtags.includes("EveryoneIgnoredHim") || pkg.socialPackaging.hashtags.includes("Ren"));
   });
 
-  it("4f. Storyboard consistency: Chess Match idea produces obsidian crystal chess grandmaster sequence", () => {
+  it("4f. Storyboard consistency: Erased Classmate idea produces sudden disappearance, falling pencil, and dissolving group photo sequence", () => {
     const ranked = generateAndRankIdeas(mockAnalysis);
-    const chessIdea = ranked.find((i) => i.id === "idea_sensory_paradox_chess")!;
-    assert.ok(chessIdea, "Chess candidate idea must exist");
+    const erasedIdea = ranked.find((i) => i.id === "idea_classroom_erased_classmate")!;
+    assert.ok(erasedIdea, "Erased classmate candidate idea must exist");
 
-    const pkg = buildProductionPackage(chessIdea, mockAnalysis);
+    const pkg = buildProductionPackage(erasedIdea, mockAnalysis);
 
-    assert.ok(
-      pkg.storyboard[0].name === "The Sensory Paradox Hook" ||
-      pkg.storyboard[0].name === "The Obsidian King Slide Hook"
-    );
-    assert.ok(pkg.storyboard[0].visualDescription.toLowerCase().includes("obsidian") || pkg.storyboard[0].visualDescription.toLowerCase().includes("chess"));
-    assert.ok(pkg.storyboard[2].name.toLowerCase().includes("checkmate"));
-    assert.ok(pkg.storyboard[2].dialogue.toLowerCase().includes("checkmate"));
-    assert.ok(pkg.openingHook.onScreenText.includes("GRANDMASTER"));
-    assert.ok(pkg.socialPackaging.hashtags.includes("chess"));
+    assert.equal(pkg.storyboard[0].name, "The Dissolving Classmate Hook");
+    assert.ok(pkg.storyboard[0].visualDescription.toLowerCase().includes("pencil") || pkg.storyboard[0].visualDescription.toLowerCase().includes("static") || pkg.storyboard[0].visualDescription.toLowerCase().includes("dissolve"));
+    assert.ok(pkg.storyboard[2].name.toLowerCase().includes("photo"));
+    assert.ok(pkg.storyboard[2].dialogue.toLowerCase().includes("photo"));
+    assert.ok(pkg.openingHook.onScreenText.includes("ERASED"));
+    assert.ok(pkg.socialPackaging.hashtags.includes("PsychologicalAnime") || pkg.socialPackaging.hashtags.includes("EveryoneIgnoredHim"));
   });
 
-  it("4g. Storyboard consistency: Rooftop Confrontation idea matches helipad, sniper red dot, and lightning rod deflection (never substitutes chess)", () => {
+  it("4g. Storyboard consistency: The Best Friend's Secret idea matches hallway tension, locker confrontation, and ringing backpack phone (never substitutes chess)", () => {
     const ranked = generateAndRankIdeas(mockAnalysis);
-    const rooftopIdea = ranked.find((i) => i.id === "idea_neon_rooftop_duel")!;
-    assert.ok(rooftopIdea, "Rooftop duel candidate idea must exist");
+    const secretIdea = ranked.find((i) => i.id === "idea_best_friend_secret")!;
+    assert.ok(secretIdea, "Best friend secret candidate idea must exist");
 
-    const pkg = buildProductionPackage(rooftopIdea, mockAnalysis);
+    const pkg = buildProductionPackage(secretIdea, mockAnalysis);
 
-    // Scene 1: red laser sniper dot on dark sunglasses at helipad
-    assert.equal(pkg.storyboard[0].name, "The Sniper Red Dot Hook");
-    assert.ok(pkg.storyboard[0].visualDescription.toLowerCase().includes("helipad") || pkg.storyboard[0].visualDescription.toLowerCase().includes("sniper"));
+    // Scene 1: hallway locker confrontation
+    assert.equal(pkg.storyboard[0].name, "The Hallway Confrontation Hook");
+    assert.ok(pkg.storyboard[0].visualDescription.toLowerCase().includes("locker") || pkg.storyboard[0].visualDescription.toLowerCase().includes("hallway"));
     assert.ok(
-      pkg.storyboard[0].dialogue.toLowerCase().includes("laser") ||
-      pkg.storyboard[0].dialogue.toLowerCase().includes("red dot"),
-      "Scene 1 dialogue must reference the sniper laser or red dot"
+      pkg.storyboard[0].dialogue.toLowerCase().includes("locker") ||
+      pkg.storyboard[0].dialogue.toLowerCase().includes("phone"),
+      "Scene 1 dialogue must reference the locker or phone"
     );
 
-    // Scene 3: lightning rod deflection
-    assert.equal(pkg.storyboard[2].name, "The Lightning Rod Deflection");
-    assert.ok(pkg.storyboard[2].visualDescription.toLowerCase().includes("lightning"));
-    assert.ok(pkg.storyboard[2].dialogue.toLowerCase().includes("conductor") || pkg.storyboard[2].dialogue.toLowerCase().includes("lightning"));
+    // Scene 3: ringing backpack
+    assert.equal(pkg.storyboard[2].name, "The Ringing Backpack");
+    assert.ok(pkg.storyboard[2].visualDescription.toLowerCase().includes("backpack") || pkg.storyboard[2].visualDescription.toLowerCase().includes("ringtone"));
+    assert.ok(pkg.storyboard[2].dialogue.toLowerCase().includes("backpack") || pkg.storyboard[2].dialogue.toLowerCase().includes("ringing"));
 
     // Narration must NOT substitute chess or janitor
-    assert.ok(!pkg.narrationAndSubtitles.fullNarrationText.toLowerCase().includes("chess"), "Rooftop duel must not contain chess");
-    assert.ok(!pkg.narrationAndSubtitles.fullNarrationText.toLowerCase().includes("janitor"), "Rooftop duel must not contain janitor");
-    assert.ok(pkg.openingHook.onScreenText.includes("CONDUCTOR") || pkg.openingHook.onScreenText.includes("LIGHTNING"));
+    assert.ok(!pkg.narrationAndSubtitles.fullNarrationText.toLowerCase().includes("chess"), "Hallway confrontation must not contain chess");
+    assert.ok(!pkg.narrationAndSubtitles.fullNarrationText.toLowerCase().includes("janitor"), "Hallway confrontation must not contain janitor");
+    assert.ok(pkg.openingHook.onScreenText.includes("BEST FRIEND") || pkg.openingHook.onScreenText.includes("SECRET"));
   });
 
-  it("4h. Storyboard consistency: Protective-parent concepts match specific situations (school festival vs penthouse defense)", () => {
+  it("4h. Storyboard consistency: Reluctant Guardian concepts match specific rescue situations (Yamanote train platform vs rooftop lockdown)", () => {
     const ranked = generateAndRankIdeas(mockAnalysis);
-    const schoolIdea = ranked.find((i) => i.id === "idea_daughter_school_festival")!;
-    assert.ok(schoolIdea, "School festival idea must exist");
+    const trainIdea = ranked.find((i) => i.id === "idea_yamanote_platform_rescue")!;
+    assert.ok(trainIdea, "Train platform rescue idea must exist");
 
-    const schoolPkg = buildProductionPackage(schoolIdea, mockAnalysis);
+    const trainPkg = buildProductionPackage(trainIdea, mockAnalysis);
 
-    // Verify school festival has elementary chair and crayon drawing
-    assert.equal(schoolPkg.storyboard[0].name, "The Elementary School Chair Hook");
-    assert.ok(schoolPkg.storyboard[0].visualDescription.toLowerCase().includes("elementary") || schoolPkg.storyboard[0].visualDescription.toLowerCase().includes("chair"));
-    assert.ok(schoolPkg.storyboard[0].visualDescription.toLowerCase().includes("crayon") || schoolPkg.storyboard[0].visualDescription.toLowerCase().includes("drawing"));
-    assert.ok(schoolPkg.storyboard[2].visualDescription.toLowerCase().includes("usb") || schoolPkg.storyboard[2].visualDescription.toLowerCase().includes("pocket"));
-    assert.ok(schoolPkg.openingHook.onScreenText.includes("SCHOOL") || schoolPkg.openingHook.onScreenText.includes("DAD"));
+    // Verify train rescue has station yellow line and electrical arc
+    assert.equal(trainPkg.storyboard[0].name, "The 4:18 PM Station Yellow Line Hook");
+    assert.ok(trainPkg.storyboard[0].visualDescription.toLowerCase().includes("platform") || trainPkg.storyboard[0].visualDescription.toLowerCase().includes("yellow line"));
+    assert.ok(trainPkg.storyboard[0].dialogue.toLowerCase().includes("yellow line"));
+    assert.ok(trainPkg.storyboard[2].visualDescription.toLowerCase().includes("electrical") || trainPkg.storyboard[2].visualDescription.toLowerCase().includes("track") || trainPkg.storyboard[2].visualDescription.toLowerCase().includes("arc"));
+    assert.ok(trainPkg.openingHook.onScreenText.includes("TRAIN") || trainPkg.openingHook.onScreenText.includes("RESCUE"));
 
-    // Penthouse defense idea
-    const defenseIdea = ranked.find((i) => i.id === "idea_daughter_protective_vengeance")!;
-    assert.ok(defenseIdea, "Penthouse defense idea must exist");
+    // Rooftop lockdown idea
+    const rooftopIdea = ranked.find((i) => i.id === "idea_rooftop_lockdown_protective")!;
+    assert.ok(rooftopIdea, "Rooftop lockdown idea must exist");
 
-    const defensePkg = buildProductionPackage(defenseIdea, mockAnalysis);
-    assert.equal(defensePkg.storyboard[0].name, "The Penthouse Scarf Hook");
-    assert.ok(defensePkg.storyboard[0].visualDescription.toLowerCase().includes("scarf"));
-    assert.ok(defensePkg.storyboard[1].visualDescription.toLowerCase().includes("double doors") || defensePkg.storyboard[1].visualDescription.toLowerCase().includes("penthouse"));
-    assert.ok(defensePkg.storyboard[3].dialogue.toLowerCase().includes("bedtime"));
+    const rooftopPkg = buildProductionPackage(rooftopIdea, mockAnalysis);
+    assert.equal(rooftopPkg.storyboard[0].name, "The Rooftop Barricade Hook");
+    assert.ok(rooftopPkg.storyboard[0].visualDescription.toLowerCase().includes("rooftop") || rooftopPkg.storyboard[0].visualDescription.toLowerCase().includes("barricade") || rooftopPkg.storyboard[0].visualDescription.toLowerCase().includes("door"));
+    assert.ok(rooftopPkg.storyboard[1].visualDescription.toLowerCase().includes("stairwell") || rooftopPkg.storyboard[1].visualDescription.toLowerCase().includes("silhouettes"));
+    assert.ok(rooftopPkg.storyboard[3].dialogue.toLowerCase().includes("exist"));
   });
 
   it("4i. Storyboard consistency: Incomplete or invalid idea candidate throws explicit StoryboardGenerationError", () => {
@@ -739,23 +736,32 @@ describe("Phase 2: Autonomous Content Director Unit & Integration Tests", () => 
     // Count posts before failed cycle
     const postsBefore = await db.select().from(posts).where(eq(posts.userId, user.id));
 
-    // Temporarily rename the real media file to simulate missing asset
+    // Temporarily rename all real media files to simulate missing asset
     const realMediaDir = path.join(process.cwd(), ".data", "media");
     const realFile = path.join(realMediaDir, "An_Intelligent_Blind_Gangster_Part1_MasterCut_42s.mp4");
     const tempFile = path.join(realMediaDir, "An_Intelligent_Blind_Gangster_Part1_MasterCut_42s.mp4.bak");
+    const realFile2 = path.join(realMediaDir, "Everyone_Ignored_Him_Until_Tomorrow_Ep1_MasterCut_42s.mp4");
+    const tempFile2 = path.join(realMediaDir, "Everyone_Ignored_Him_Until_Tomorrow_Ep1_MasterCut_42s.mp4.bak");
 
     const pubMediaDir = path.join(process.cwd(), "public", "media");
     const pubFile = path.join(pubMediaDir, "An_Intelligent_Blind_Gangster_Part1_MasterCut_42s.mp4");
     const pubTemp = path.join(pubMediaDir, "An_Intelligent_Blind_Gangster_Part1_MasterCut_42s.mp4.bak");
+    const pubFile2 = path.join(pubMediaDir, "Everyone_Ignored_Him_Until_Tomorrow_Ep1_MasterCut_42s.mp4");
+    const pubTemp2 = path.join(pubMediaDir, "Everyone_Ignored_Him_Until_Tomorrow_Ep1_MasterCut_42s.mp4.bak");
 
     const standaloneMediaDir = path.join(process.cwd(), ".next", "standalone", "public", "media");
     const standaloneFile = path.join(standaloneMediaDir, "An_Intelligent_Blind_Gangster_Part1_MasterCut_42s.mp4");
     const standaloneTemp = path.join(standaloneMediaDir, "An_Intelligent_Blind_Gangster_Part1_MasterCut_42s.mp4.bak");
+    const standaloneFile2 = path.join(standaloneMediaDir, "Everyone_Ignored_Him_Until_Tomorrow_Ep1_MasterCut_42s.mp4");
+    const standaloneTemp2 = path.join(standaloneMediaDir, "Everyone_Ignored_Him_Until_Tomorrow_Ep1_MasterCut_42s.mp4.bak");
 
     try {
       if (fs.existsSync(realFile)) fs.renameSync(realFile, tempFile);
       if (fs.existsSync(pubFile)) fs.renameSync(pubFile, pubTemp);
       if (fs.existsSync(standaloneFile)) fs.renameSync(standaloneFile, standaloneTemp);
+      if (fs.existsSync(realFile2)) fs.renameSync(realFile2, tempFile2);
+      if (fs.existsSync(pubFile2)) fs.renameSync(pubFile2, pubTemp2);
+      if (fs.existsSync(standaloneFile2)) fs.renameSync(standaloneFile2, standaloneTemp2);
 
       let caughtError: string | null = null;
       try {
@@ -783,6 +789,9 @@ describe("Phase 2: Autonomous Content Director Unit & Integration Tests", () => 
       if (fs.existsSync(tempFile)) fs.renameSync(tempFile, realFile);
       if (fs.existsSync(pubTemp)) fs.renameSync(pubTemp, pubFile);
       if (fs.existsSync(standaloneTemp)) fs.renameSync(standaloneTemp, standaloneFile);
+      if (fs.existsSync(tempFile2)) fs.renameSync(tempFile2, realFile2);
+      if (fs.existsSync(pubTemp2)) fs.renameSync(pubTemp2, pubFile2);
+      if (fs.existsSync(standaloneTemp2)) fs.renameSync(standaloneTemp2, standaloneFile2);
     }
   });
 

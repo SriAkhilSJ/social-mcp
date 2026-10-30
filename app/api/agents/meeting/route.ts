@@ -38,14 +38,14 @@ export async function POST(req: Request) {
   };
 
   const defaultTopic =
-    "Viral Launch Strategy: 'Mafia Boss Dad & Daughter' — Crafting High-Retention Episode 1 for Facebook Reels & TikTok";
+    "Viral Launch Strategy: 'EVERYONE IGNORED HIM… UNTIL TOMORROW' — Crafting High-Retention Episode 1 for Facebook Reels & TikTok";
 
   const topic = body.topic?.trim() || defaultTopic;
 
   if (body.action === "execute-plan") {
     // 1-click execute the strategy as a live campaign plan
     const execPrompt =
-      `Based on our 5-agent strategy meeting for ${topic}, execute the agreed plan: research the top trending hooks, create 2 video reels for The Blind Janitor and Mafia Boss Dad & Daughter, and schedule them on our Facebook page and calendar.`;
+      `Based on our 5-agent strategy meeting for ${topic}, execute the agreed plan: research the top trending hooks, create 2 video reels for EVERYONE IGNORED HIM… UNTIL TOMORROW, and schedule them on our Facebook page and calendar.`;
 
     const res = await handleMasterChatAndPlan({
       userId: scope.userId,

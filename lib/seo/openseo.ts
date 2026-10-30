@@ -78,19 +78,19 @@ export async function optimizePostWithOpenSeo(
       tier: "high_reach",
       label: "Global Reach (>10M Views)",
       estimatedVolume: "15M - 50M+",
-      tags: ["anime", "animereels", "animeedits", "aianime"],
+      tags: ["anime", "animereels", "animeedits", "aianime", "everyoneignoredhim"],
     },
     {
       tier: "targeted_authority",
       label: "Category Authority (500K - 5M Views)",
       estimatedVolume: "1M - 5M",
-      tags: ["mafiaboss", "tokyonoir", "manhwa", "animeshorts", "cinematic"],
+      tags: ["mysteryanime", "tokyonoir", "timetravel", "manhwa", "animeshorts", "cinematic", "mafiaboss"],
     },
     {
       tier: "niche_community",
       label: "Niche Fan Community (<500K High Retention)",
       estimatedVolume: "100K - 500K",
-      tags: ["blindgangster", "renkurokawa", "animedrama", "protectivedad"],
+      tags: ["blindgangster", "renkurokawa", "animedrama", "protectivedad", "timeloop", "psychologicalanime"],
     },
   ];
 
@@ -99,6 +99,13 @@ export async function optimizePostWithOpenSeo(
   // Keyword Density Analysis
   const combinedText = `${title} ${caption}`.toLowerCase();
   const trackedKeywords = [
+    "tomorrow",
+    "message",
+    "ren",
+    "mystery",
+    "disappear",
+    "timeline",
+    "paradox",
     "ren kurokawa",
     "mafia",
     "boss",

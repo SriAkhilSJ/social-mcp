@@ -471,23 +471,23 @@ function buildAnalysisFromPosts(
   > = {
     "Sensory Paradox": {
       pattern: "The Sensory Paradox Pattern Interrupt",
-      regex: /sensory|cane|blind|darkness|paradox|janitor|grandmaster/i,
-      example: "A single cane tap in darkness followed by sudden blackout.",
+      regex: /tomorrow|message|erased|disappear|glitch|sensory|cane|blind|darkness|paradox|janitor|grandmaster/i,
+      example: "A phone vibrating in pitch darkness at 3:14 AM with a message timestamped from tomorrow.",
     },
     "High-IQ Checkmate": {
       pattern: "The High-IQ Reversal",
-      regex: /audit|checkmate|billionaire|broker|one-yen|iq|chess/i,
-      example: "The arrogant cartel boss realizes Ren already purchased his entire syndicate.",
+      regex: /exam|blackboard|secret|locker|backpack|reveal|audit|checkmate|billionaire|broker|one-yen|iq|chess/i,
+      example: "Ren writes the sealed exam questions on the blackboard before the teacher opens the envelope.",
     },
     "Reluctant Guardian": {
       pattern: "The High-Stakes Protective Guardian",
-      regex: /daughter|princess|parent|father|protect|school|lesson/i,
-      example: "Ren adjusting his daughter's blanket before disarming 5 armed enforcers.",
+      regex: /yamanote|tracks|train|yellow line|rooftop|lockdown|hospital|room 404|daughter|princess|parent|father|protect|school|lesson/i,
+      example: "Ren pulling a classmate back from the train tracks seconds before the mechanical failure.",
     },
     "Sound-First ASMR": {
       pattern: "The Foley Atmosphere Sensory Immersion",
-      regex: /rain|sound|asmr|umbrella|train|subway|whisper|heliport/i,
-      example: "Zero dialogue for 2 seconds; only heavy rain on silk umbrella and match strike.",
+      regex: /voice note|countdown|crosswalk|rain|sound|asmr|umbrella|train|subway|whisper|heliport|glitch/i,
+      example: "Dead silence for 2 seconds, followed by a glitching voice note: 'Ren... this is you from tomorrow.'",
     },
   };
 
@@ -680,10 +680,10 @@ export function evaluateChannelPerformance(
     "Sensory Paradox" | "High-IQ Checkmate" | "Reluctant Guardian" | "Sound-First ASMR",
     RegExp
   > = {
-    "Sensory Paradox": /sensory|cane|blind|darkness|paradox|janitor/i,
-    "High-IQ Checkmate": /audit|checkmate|billionaire|broker|one-yen|iq|grandmaster|chess/i,
-    "Reluctant Guardian": /daughter|princess|parent|father|protect|school|lesson/i,
-    "Sound-First ASMR": /rain|sound|asmr|umbrella|train|subway|whisper|heliport/i,
+    "Sensory Paradox": /tomorrow|message|erased|disappear|glitch|sensory|cane|blind|darkness|paradox|janitor/i,
+    "High-IQ Checkmate": /exam|blackboard|secret|locker|backpack|reveal|audit|checkmate|billionaire|broker|one-yen|iq|grandmaster|chess/i,
+    "Reluctant Guardian": /yamanote|tracks|train|yellow line|rooftop|lockdown|hospital|room 404|daughter|princess|parent|father|protect|school|lesson/i,
+    "Sound-First ASMR": /voice note|countdown|crosswalk|rain|sound|asmr|umbrella|train|subway|whisper|heliport|glitch/i,
   };
 
   const conceptPerformance: ConceptPerformanceRecord[] = Object.entries(archetypePatterns).map(
@@ -945,8 +945,8 @@ export function verifyDraftConsistency(input: DraftConsistencyCheckInput): {
   // 3. Selected Idea vs Storyboard & Narration Narrative Alignment
   if (selectedIdea.archetype === "Reluctant Guardian") {
     const hasGuardianElements =
-      /daughter|father|princess|school|parent|protect|lesson/i.test(fullNarrationText) ||
-      storyboard.some((s) => /daughter|father|school|conference|protect/i.test(s.visualDescription + s.dialogue));
+      /daughter|father|princess|school|parent|protect|guardian|yamanote|tracks|train|rooftop|lockdown|hospital|lesson/i.test(fullNarrationText) ||
+      storyboard.some((s) => /daughter|father|school|conference|protect|guardian|yamanote|tracks|train|rooftop|lockdown|hospital/i.test(s.visualDescription + s.dialogue));
     if (!hasGuardianElements) {
       mismatches.push(
         `Concept mismatch: Idea archetype is "Reluctant Guardian", but storyboard and narration lack protective guardian/daughter narrative beats.`
@@ -954,8 +954,8 @@ export function verifyDraftConsistency(input: DraftConsistencyCheckInput): {
     }
   } else if (selectedIdea.archetype === "Sensory Paradox") {
     const hasSensoryElements =
-      /cane|blind|darkness|janitor|broom|hearing|sound|tap/i.test(fullNarrationText) ||
-      storyboard.some((s) => /cane|blind|darkness|broom|janitor|tap/i.test(s.visualDescription + s.dialogue));
+      /tomorrow|message|erased|disappear|glitch|phone|cane|blind|darkness|janitor|broom|hearing|sound|tap/i.test(fullNarrationText) ||
+      storyboard.some((s) => /tomorrow|message|erased|disappear|glitch|phone|cane|blind|darkness|broom|janitor|tap/i.test(s.visualDescription + s.dialogue));
     if (!hasSensoryElements) {
       mismatches.push(
         `Concept mismatch: Idea archetype is "Sensory Paradox", but storyboard and narration lack sensory paradox beats.`
@@ -963,8 +963,8 @@ export function verifyDraftConsistency(input: DraftConsistencyCheckInput): {
     }
   } else if (selectedIdea.archetype === "High-IQ Checkmate") {
     const hasCheckmateElements =
-      /chess|checkmate|audit|broker|billionaire|contract|shares|iq|move/i.test(fullNarrationText) ||
-      storyboard.some((s) => /chess|checkmate|boardroom|contract|audit/i.test(s.visualDescription + s.dialogue));
+      /exam|blackboard|secret|locker|backpack|reveal|chess|checkmate|audit|broker|billionaire|contract|shares|iq|move/i.test(fullNarrationText) ||
+      storyboard.some((s) => /exam|blackboard|secret|locker|backpack|reveal|chess|checkmate|boardroom|contract|audit/i.test(s.visualDescription + s.dialogue));
     if (!hasCheckmateElements) {
       mismatches.push(
         `Concept mismatch: Idea archetype is "High-IQ Checkmate", but storyboard and narration lack strategic checkmate beats.`
@@ -1019,10 +1019,10 @@ export function calculateCandidateScore(
 
     // Group reels by archetype matching keywords
     const archetypePatterns: Record<string, RegExp> = {
-      "Sensory Paradox": /sensory|cane|blind|darkness|paradox|janitor/i,
-      "High-IQ Checkmate": /audit|checkmate|billionaire|broker|one-yen|iq|grandmaster|chess/i,
-      "Reluctant Guardian": /daughter|princess|parent|father|protect|school|lesson/i,
-      "Sound-First ASMR": /rain|sound|asmr|umbrella|train|subway|whisper|heliport/i,
+      "Sensory Paradox": /tomorrow|message|erased|disappear|glitch|sensory|cane|blind|darkness|paradox|janitor/i,
+      "High-IQ Checkmate": /exam|blackboard|secret|locker|backpack|reveal|audit|checkmate|billionaire|broker|one-yen|iq|grandmaster|chess/i,
+      "Reluctant Guardian": /yamanote|tracks|train|yellow line|rooftop|lockdown|hospital|room 404|daughter|princess|parent|father|protect|school|lesson/i,
+      "Sound-First ASMR": /voice note|countdown|crosswalk|rain|sound|asmr|umbrella|train|subway|whisper|heliport|glitch/i,
     };
 
     const pattern = archetypePatterns[idea.archetype];
@@ -1132,114 +1132,114 @@ export function calculateCandidateScore(
 export function generateAndRankIdeas(analysis: PerformanceAnalysis): ReelIdeaCandidate[] {
   const rawCandidates: Array<Omit<ReelIdeaCandidate, "scores" | "ranking" | "scoringBasis">> = [
     {
-      id: "idea_blind_accountant_reversal",
-      title: "The Blind King's Audit",
-      seriesEpisode: "Episode #26",
+      id: "idea_tomorrow_message_314am",
+      title: "The 3:14 AM Message from Tomorrow",
+      seriesEpisode: "Episode #1",
+      archetype: "Sensory Paradox",
+      targetDurationSeconds: 52,
+      hookOpening: 'His phone vibrated violently in pitch darkness: "DO NOT GO TO HOMEROOM AT 8:00 AM. DESK 4 WILL BE EMPTY."',
+      coreConflict: "Ren sits in his dark bedroom at 3:14 AM as an impossible message arrives from an unknown sender with a timestamp from tomorrow morning.",
+      emotionalPayoff: "Ren arrives at school—desk 4 is completely gone, and when he asks his classmates, they stare blankly: 'Nobody ever sat there, Ren.'",
+      loopMechanism: "The sharp phone vibration buzz in the final second matches the opening vibration beat.",
+    },
+    {
+      id: "idea_best_friend_secret",
+      title: "The Best Friend's Secret",
+      seriesEpisode: "Episode #2",
       archetype: "High-IQ Checkmate",
       targetDurationSeconds: 52,
-      hookOpening: "The boardroom lights flicker out. In the dark, a blind man calmly types on a mechanical calculator: Click. Click. 'Your debt is due.'",
-      coreConflict: "A rival cartel surrounds Ren in a luxury penthouse, demanding his offshore accounts, unaware his blind cane is wired to their financial server.",
-      emotionalPayoff: "The arrogant cartel boss checks his phone and falls to his knees as his empire evaporates in 3 seconds.",
-      loopMechanism: "The mechanical calculator click in the final frame seamlessly echoes the first frame's opening click.",
+      hookOpening: 'Ren watched his best friend smile in the school hallway, but his phone buzzed: "LOOK AT HIS LOCKER. HE HAS HIS PHONE."',
+      coreConflict: "Ren uses clues from tomorrow's texts to trick his best friend into revealing the missing student's hidden belongings.",
+      emotionalPayoff: "The friend freezes as Ren dials the missing student's number... and the ringtone plays from his friend's backpack.",
+      loopMechanism: "The echoing school locker slam loops into the opening hallway beat.",
     },
     {
-      id: "idea_daughter_protective_vengeance",
-      title: "The Cat, The Cane, and The Crown",
-      seriesEpisode: "Episode #27",
-      archetype: "Reluctant Guardian",
-      targetDurationSeconds: 54,
-      hookOpening: "Ren gently wraps a scarf around his 7-year-old daughter. 'Close your ears, sweetie. Daddy needs to teach five men how to knock.'",
-      coreConflict: "Armed assassins breach the private residence unaware that Ren Kurokawa has mapped every tile and acoustic bounce of the room.",
-      emotionalPayoff: "Ren dismantles the strike team in absolute darkness without raising his voice or spilling a drop of tea.",
-      loopMechanism: "The rhythmic tick of a grandfather clock closes the scene and triggers the opening beat.",
-    },
-    {
-      id: "idea_sound_first_rain_interrogation",
-      title: "Rain on a Black Umbrella",
-      seriesEpisode: "Episode #28",
-      archetype: "Sound-First ASMR",
-      targetDurationSeconds: 49,
-      hookOpening: "Zero dialogue for 2 seconds. Only heavy rain pounding a silk umbrella and a slow match strike illuminating Ren's dark sunglasses.",
-      coreConflict: "A corrupt detective interrogates Ren in an abandoned Shibuya alleyway, demanding names.",
-      emotionalPayoff: "Ren reveals he knew the detective's daughter was saved by Ren's own charity hospital that morning.",
-      loopMechanism: "A single water droplet hits a puddle and snaps into the opening rain loop.",
-    },
-    {
-      id: "idea_sensory_paradox_chess",
-      title: "The Blind Grandmaster",
-      seriesEpisode: "Episode #29",
+      id: "idea_classroom_erased_classmate",
+      title: "The Erased Classmate",
+      seriesEpisode: "Episode #3",
       archetype: "Sensory Paradox",
       targetDurationSeconds: 53,
-      hookOpening: "Ren slides a carved obsidian king across a crystal table without looking: 'A sighted man watches the pieces. A master watches the room.'",
-      coreConflict: "The city's biggest underground broker bets his entire fortune on one blitz game with Ren Kurokawa.",
-      emotionalPayoff: "Checkmate on move 4. The rival realizes Ren memorized the board vibrations through the marble tabletop.",
-      loopMechanism: "The sharp wooden clack of the chess king looping directly into the opening piece drop.",
+      hookOpening: 'Ren blinked. The boy sitting in front of him vanished mid-sentence. His pencil fell to the floor: CLATTER.',
+      coreConflict: "Ren tries to prove his classmate existed while the teacher and students look at him like he's losing his mind.",
+      emotionalPayoff: "Ren pulls out the group photo on his phone—and watches the classmate's face dissolve into digital static in real-time.",
+      loopMechanism: "The metallic pencil clatter loops into the opening desk rattle.",
     },
     {
-      id: "idea_the_janitor_origin_secret",
-      title: "The Sweeper of Kabukicho",
-      seriesEpisode: "Episode #30",
-      archetype: "Sensory Paradox",
-      targetDurationSeconds: 55,
-      hookOpening: "A blind janitor in a faded apron sweeps cigarette butts outside a gangster nightclub. A captain kicks his bucket. Ren stops sweeping.",
-      coreConflict: "Young cartel enforcers harass an old blind janitor, completely unaware he founded the very syndicate they work for.",
-      emotionalPayoff: "Ren calmly recites the names of their grandfathers and whispers the secret syndicate oath; the entire room drops to their knees.",
-      loopMechanism: "The rhythmic sweep of the broom bristles perfectly synchronizes into the starting sweep sound.",
+      id: "idea_yamanote_platform_rescue",
+      title: "The Yamanote Line at 4:18 PM",
+      seriesEpisode: "Episode #4",
+      archetype: "Reluctant Guardian",
+      targetDurationSeconds: 54,
+      hookOpening: 'Ren grabbed the classmate who mocked him that morning: "Step back from the yellow line. NOW."',
+      coreConflict: "The text warned that a student would fall onto the tracks at 4:18 PM. Ren must intervene without looking insane.",
+      emotionalPayoff: "A sudden mechanical failure sparks across the track right where she stood; she stares at Ren in terrified gratitude.",
+      loopMechanism: "The screeching train brakes loop into the opening warning buzzer.",
     },
     {
-      id: "idea_daughter_school_festival",
-      title: "Parent-Teacher Conference in Blood",
-      seriesEpisode: "Episode #31",
+      id: "idea_voice_note_future_ren",
+      title: "The 24-Hour Voice Note",
+      seriesEpisode: "Episode #5",
+      archetype: "Sound-First ASMR",
+      targetDurationSeconds: 49,
+      hookOpening: 'Dead silence for 2 seconds. Only heavy breathing and a glitching speaker: "Ren... this is you from tomorrow. Run."',
+      coreConflict: "Ren plays an impossible audio file sent from his own phone number with the next day's date.",
+      emotionalPayoff: "The voice in the recording predicts every footstep approaching Ren's front door with terrifying precision.",
+      loopMechanism: "The static audio glitch snaps into the opening dead silence.",
+    },
+    {
+      id: "idea_rooftop_lockdown_protective",
+      title: "The Rooftop Lockdown",
+      seriesEpisode: "Episode #6",
       archetype: "Reluctant Guardian",
       targetDurationSeconds: 51,
-      hookOpening: "Ren Kurokawa sits in a tiny elementary school chair in a bespoke three-piece suit holding his daughter's crayon drawing.",
-      coreConflict: "A rival syndicate boss enters the school festival hoping to corner Ren in public.",
-      emotionalPayoff: "Ren quietly slides a USB drive with the rival's family secrets into his pocket: 'I promised my daughter I wouldn't ruin her art class. Don't test me.'",
-      loopMechanism: "The school bell chime in the final second matches the opening school bell chime.",
+      hookOpening: 'Ren barricaded the high school rooftop door as shadows gathered in the stairwell: "Stay behind me."',
+      coreConflict: "Ren protects the two surviving students from shadowy figures erasing memories across the campus.",
+      emotionalPayoff: "Ren reveals the secret escape route predicted in tomorrow's floor plan text.",
+      loopMechanism: "The heavy metal door lock click loops into the opening slam.",
     },
     {
-      id: "idea_subway_car_ambush",
-      title: "Last Train from Shinjuku",
-      seriesEpisode: "Episode #32",
-      archetype: "Sound-First ASMR",
-      targetDurationSeconds: 56,
-      hookOpening: "Subway lights flicker red. The emergency brakes screech. Ren stands alone in the subway car holding his white walking cane.",
-      coreConflict: "Six elite blade assassins surround Ren inside a locked, moving underground train carriage.",
-      emotionalPayoff: "Ren uses the rhythmic sway of the train car and the flickering neon to neutralize every attacker in 8 clean strokes.",
-      loopMechanism: "The metallic clatter of the train tracks loops seamlessly into the opening train motion.",
-    },
-    {
-      id: "idea_auction_room_heist",
-      title: "The One-Yen Bid",
-      seriesEpisode: "Episode #33",
+      id: "idea_blackboard_prediction_checkmate",
+      title: "The Impossible Exam",
+      seriesEpisode: "Episode #7",
       archetype: "High-IQ Checkmate",
       targetDurationSeconds: 50,
-      hookOpening: "At a secret billionaire auction, a stolen historical katana is announced. Ren Kurokawa raises a single finger: 'One yen.'",
-      coreConflict: "Billionaires laugh and outbid him to 100 million, unaware Ren already bought the auction house and the building deed.",
-      emotionalPayoff: "Ren taps his cane; the gavel drops at one yen because Ren owns the debt of every buyer in the room.",
-      loopMechanism: "The gavel crack in the auction room loops into the cane strike of frame 1.",
+      hookOpening: 'Before the teacher even opened the sealed exam envelope, Ren wrote the exact 5 questions on the blackboard.',
+      coreConflict: "Ren tests the limits of the tomorrow messages by predicting unpredictable live events in front of the entire class.",
+      emotionalPayoff: "The teacher drops the chalk in disbelief as the entire room realizes Ren actually knows the future.",
+      loopMechanism: "The chalk snap against the board loops into the opening strike.",
     },
     {
-      id: "idea_the_daughter_first_lesson",
-      title: "How to Listen to a Lie",
-      seriesEpisode: "Episode #34",
-      archetype: "Reluctant Guardian",
+      id: "idea_rain_crosswalk_countdown",
+      title: "Rain on the Shinjuku Crosswalk",
+      seriesEpisode: "Episode #8",
+      archetype: "Sound-First ASMR",
       targetDurationSeconds: 52,
-      hookOpening: "Ren sits with his daughter on a balcony overlooking Tokyo. 'Close your eyes, Hana. What do you hear?' 'Someone's pulse is too fast, Papa.'",
-      coreConflict: "A treacherous lieutenant delivers a report while secretly plotting an overthrow, oblivious that the little girl can hear his irregular heartbeat.",
-      emotionalPayoff: "Ren doesn't even draw his weapon. He hands the lieutenant a ticket to South America: 'Never come back.'",
-      loopMechanism: "Wind chimes on the balcony ring at the start and end.",
+      hookOpening: 'Only the sound of torrential rain on an umbrella and a neon pedestrian countdown: 3... 2... 1...',
+      coreConflict: "Ren waits at the crowded crosswalk where the text predicted a catastrophic collision.",
+      emotionalPayoff: "Ren pulls a distracted pedestrian back just as an out-of-control vehicle skids across the sidewalk.",
+      loopMechanism: "A single water drop splash loops into the opening rain beat.",
     },
     {
-      id: "idea_neon_rooftop_duel",
-      title: "Rain on the Heliport",
-      seriesEpisode: "Episode #35",
+      id: "idea_sender_unmasked_paradox",
+      title: "The Sender Unmasked",
+      seriesEpisode: "Episode #9",
       archetype: "Sensory Paradox",
-      targetDurationSeconds: 58,
-      hookOpening: "Ren stands on a rain-soaked skyscraper helipad, wind howling. A sniper red dot locks onto the center of his dark sunglasses.",
-      coreConflict: "The syndicate's deadliest mercenary challenges Ren to a one-on-one duel under a raging thunderstorm.",
-      emotionalPayoff: "Ren tilts his cane at an angle. The lightning strike hits the cane and blinds the sniper through his night-vision scope.",
-      loopMechanism: "A distant thunderclap closes the reel and opens the first second.",
+      targetDurationSeconds: 55,
+      hookOpening: 'Ren finally dialed the mystery number. The phone ringing was right behind him in his own bedroom.',
+      coreConflict: "Ren confronts the entity sending messages from tomorrow, discovering a reflection in the mirror that isn't moving with him.",
+      emotionalPayoff: 'The reflection whispers: "You ignored me yesterday. But tomorrow, you\'ll understand why we had to disappear."',
+      loopMechanism: "The phone dial tone loops into the opening ring.",
+    },
+    {
+      id: "idea_phantom_room_guardian",
+      title: "The Room That Never Existed",
+      seriesEpisode: "Episode #10",
+      archetype: "Reluctant Guardian",
+      targetDurationSeconds: 53,
+      hookOpening: 'Ren walked into hospital room 404 to protect his friend\'s sister. The doctors stopped him: "Room 404 was demolished ten years ago."',
+      coreConflict: "Ren follows a text from tomorrow to a hospital floor that only exists in between timeline shifts.",
+      emotionalPayoff: "Ren finds the girl sleeping safely inside the phantom room and leaves the protective charm from tomorrow.",
+      loopMechanism: "The ECG monitor heartbeat beep loops into the opening pulse.",
     },
   ];
 
@@ -1314,6 +1314,907 @@ export function generateIdeaSpecificStoryboardAndNarration(winningIdea: ReelIdea
   const targetDuration = winningIdea.targetDurationSeconds || 52;
   const quoteMatch = hookOpening.match(/"([^"]+)"/);
   const hookQuote = quoteMatch ? `"${quoteMatch[1]}"` : hookOpening;
+
+  // ==========================================
+  // FLAGSHIP SERIES: "EVERYONE IGNORED HIM… UNTIL TOMORROW"
+  // Authentic Mystery Anime Series by AnimeEdits
+  // ==========================================
+
+  // 1. MESSAGE FROM TOMORROW: 03:14 AM (Sensory Paradox)
+  if (
+    ideaId === "idea_tomorrow_message_314am" ||
+    (titleLower.includes("message") && titleLower.includes("tomorrow")) ||
+    titleLower.includes("3:14") ||
+    hookLower.includes("desk 4")
+  ) {
+    const s1Dialogue = hookQuote || '"DO NOT GO TO HOMEROOM AT 8:00 AM. DESK 4 WILL BE EMPTY."';
+    const s2Dialogue = '"Look at Ren, staring at the floor like he lost his mind again."';
+    const s3Dialogue = '"Where is Daiki? He sits right in front of me!" ... "Who is Daiki? Nobody ever sat there, Ren."';
+    const s4Dialogue = '"HE\'S NOT DEAD. HE NEVER EXISTED."';
+
+    const storyboard: StoryboardScene[] = [
+      {
+        sceneNumber: 1,
+        name: "The 3:14 AM Notification Hook",
+        timeframe: "00:00 - 00:03",
+        visualDescription:
+          "Pitch dark bedroom. Macro shot of a cracked smartphone vibrating violently on a wooden nightstand. Neon blue screen illuminates Ren's wide, disbelieving eyes: 'DO NOT GO TO HOMEROOM AT 8:00 AM. DESK 4 WILL BE EMPTY.'",
+        cameraMotion: "Sudden whip-pan from vibrating phone edge to Ren's dilated pupils in darkness",
+        lightingAndColor: "Deep midnight blue, harsh phosphor phone screen glare, high-contrast anime chiaroscuro",
+        veoPrompt:
+          "9:16 vertical video. [00:00-00:03] Dark bedroom, vibrating smartphone with glowing lock screen at 3:14 AM. Teenager Ren stares in shock. Japanese mystery anime, MAPPA style, high tension lighting.",
+        nativeAudioCue: "Violent phone motor vibration on hollow wood, sudden ominous bass pulse",
+        speaker: "Unknown Sender (Tomorrow)",
+        dialogue: s1Dialogue,
+        subtitles: s1Dialogue,
+      },
+      {
+        sceneNumber: 2,
+        name: "The Morning Walk into Whispers",
+        timeframe: "00:03 - 00:18",
+        visualDescription:
+          "Sunlit high school hallway at 7:58 AM. Students in navy blazers laughing and gossiping in groups, glancing sidelong at Ren with dismissive smirks as he walks with hurried, tense footsteps.",
+        cameraMotion: "Low tracking dolly shot backwards in front of Ren's hurried boots",
+        lightingAndColor: "Overexposed morning sun through high classroom windows, dust motes floating",
+        veoPrompt:
+          "9:16 vertical video. [00:03-00:18] High school hallway morning. Ignored loner student walks tensely while classmates laugh and whisper. Clean anime aesthetic, cinematic depth of field.",
+        nativeAudioCue: "Crowded hallway chatter, mocking adolescent laughter, distant 8:00 AM school chime",
+        speaker: "Classmates",
+        dialogue: s2Dialogue,
+        subtitles: s2Dialogue,
+      },
+      {
+        sceneNumber: 3,
+        name: "The Erased Desk & Chilling Silence",
+        timeframe: "00:18 - 00:38",
+        visualDescription:
+          "Ren slams the classroom door open. Row 4, Desk 4 is completely missing—only clean, bare floorboards where a desk sat for six months. Ren grabs his classmate by the collar demanding answers, but they stare blankly.",
+        cameraMotion: "Wide establishing shot snap-zooming onto the bare wooden floorboards",
+        lightingAndColor: "Desaturated classroom light, cold fluorescent tint",
+        veoPrompt:
+          "9:16 vertical video. [00:18-00:38] High school classroom. An empty spot where a student's desk vanished. Ren in panic confronting classmates who look at him like he is crazy. Ufotable dramatic shadows.",
+        nativeAudioCue: "Classroom door sliding open violently, silence falling over the room, clock ticking loudly",
+        speaker: "Ren / Classmate",
+        dialogue: s3Dialogue,
+        subtitles: s3Dialogue,
+      },
+      {
+        sceneNumber: 4,
+        name: "The Impossible Timestamp & Seamless Buzz Loop",
+        timeframe: `00:38 - 00:${targetDuration}`,
+        visualDescription:
+          "Ren checks his phone under his desk. A new notification appears with tomorrow's date: 'HE NEVER EXISTED.' Extreme close-up of Ren's eye as the screen glitches with static, cutting seamlessly to black.",
+        cameraMotion: "Macro extreme push-in into Ren's iris reflecting the phone screen glitched static",
+        lightingAndColor: "Screen glitch phosphor flicker fading into pitch black",
+        veoPrompt:
+          "9:16 vertical video. [00:38-00:52] Close-up of anime teenager's terrified eye reflecting glowing phone text. Digital glitch artifact. Seamless loop back to dark room.",
+        nativeAudioCue: "Sharp phone motor buzz snapping cleanly into silence, repeating the opening vibration",
+        speaker: "Unknown Sender (Tomorrow)",
+        dialogue: s4Dialogue,
+        subtitles: s4Dialogue,
+      },
+    ];
+
+    const fullNarrationText =
+      "At 3:14 AM, my phone buzzed with an impossible message. It warned me that homeroom desk four would be empty. I thought it was a prank... until I walked into class and my classmate had been completely erased from reality. Everyone laughed. Everyone ignored him. Until tomorrow.";
+
+    return {
+      storyboard,
+      fullNarrationText,
+      srtFormattedSubtitles:
+        "1\n00:00:00,000 --> 00:00:03,000\nDO NOT GO TO HOMEROOM AT 8:00 AM. DESK 4 WILL BE EMPTY.\n\n2\n00:00:03,000 --> 00:00:18,000\nLook at Ren, staring at the floor like he lost his mind again.\n\n3\n00:00:18,000 --> 00:00:38,000\nWhere is Daiki? ... Nobody ever sat there, Ren.\n\n4\n00:00:38,000 --> 00:00:52,000\nHE'S NOT DEAD. HE NEVER EXISTED.",
+      onScreenText: "A MESSAGE FROM TOMORROW 📱",
+      captionHeadline: "Everyone ignored him. Everyone laughed at him. But nobody knew what was coming…",
+      hashtags: ["EveryoneIgnoredHim", "AnimeEdits", "MysteryAnime", "Ren", "TimeTravelAnime"],
+    };
+  }
+
+  // 2. THE BEST FRIEND'S SECRET (High-IQ Checkmate)
+  if (
+    ideaId === "idea_best_friend_secret" ||
+    (titleLower.includes("friend") && titleLower.includes("secret")) ||
+    hookLower.includes("locker") ||
+    hookLower.includes("backpack")
+  ) {
+    const s1Dialogue = hookQuote || '"LOOK AT HIS LOCKER. HE HAS HIS PHONE."';
+    const s2Dialogue = '"Ren, man, you gotta stop bringing up names that don\'t exist. It\'s creeping people out."';
+    const s3Dialogue = '"Then why is Daiki\'s phone ringing inside your backpack, Kaito?"';
+    const s4Dialogue = '"You should have stayed ignored, Ren."';
+
+    const storyboard: StoryboardScene[] = [
+      {
+        sceneNumber: 1,
+        name: "The Hallway Confrontation Hook",
+        timeframe: "00:00 - 00:03",
+        visualDescription:
+          "Quiet school locker bay after hours. Ren's best friend Kaito leans against the lockers smiling warmly, but Ren's phone buzzes in his blazer: 'LOOK AT HIS LOCKER. HE HAS HIS PHONE.'",
+        cameraMotion: "Tracking shot from Kaito's friendly silhouette to Ren's trembling hand holding the phone",
+        lightingAndColor: "Amber sunset bleeding through narrow high school windows casting long ominous shadows",
+        veoPrompt:
+          "9:16 vertical video. [00:00-00:03] High school hallway at sunset. Two teenage boys by lockers. Smartphone screen glows with warning text. Psychological anime thriller, Kyoto Animation style.",
+        nativeAudioCue: "Heavy locker door slam, sharp phone haptic vibration, heartbeat pulse",
+        speaker: "Unknown Sender (Tomorrow)",
+        dialogue: s1Dialogue,
+        subtitles: s1Dialogue,
+      },
+      {
+        sceneNumber: 2,
+        name: "The Locker Feint",
+        timeframe: "00:03 - 00:18",
+        visualDescription:
+          "Ren asks casually if Kaito has seen the missing student. Kaito laughs it off with exaggerated warmth, but his knuckles tighten against his gym bag strap.",
+        cameraMotion: "Close-up on Kaito's gripping hand, slow pan up to his polite mask",
+        lightingAndColor: "Sunset red fading into dim twilight blue",
+        veoPrompt:
+          "9:16 vertical video. [00:03-00:18] Close-up on boy smiling nervously while gripping backpack strap tightly. High tension anime suspense, dramatic lighting.",
+        nativeAudioCue: "Forced nervous laugh, leather bag strap squeak, clock ticking in empty corridor",
+        speaker: "Kaito (Best Friend)",
+        dialogue: s2Dialogue,
+        subtitles: s2Dialogue,
+      },
+      {
+        sceneNumber: 3,
+        name: "The Ringing Backpack",
+        timeframe: "00:18 - 00:38",
+        visualDescription:
+          "Ren quietly dials the missing student's private number. In the silent hallway, an eerie electronic ringtone starts playing from deep inside Kaito's zipped backpack. Kaito freezes completely.",
+        cameraMotion: "Extreme push-in onto Kaito's dilated, unblinking pupils as color drains from his face",
+        lightingAndColor: "Sudden harsh cold fluorescent overhead light kicking on, washing out warmth",
+        veoPrompt:
+          "9:16 vertical video. [00:18-00:38] School corridor. Boy dials phone. Eerie ringtone plays from friend's backpack. Friend freezes in absolute shock. MAPPA anime style.",
+        nativeAudioCue: "Distant electronic ringtone muffled by canvas fabric, sharp intake of breath",
+        speaker: "Ren",
+        dialogue: s3Dialogue,
+        subtitles: s3Dialogue,
+      },
+      {
+        sceneNumber: 4,
+        name: "The Chilling Stare & Hallway Loop",
+        timeframe: `00:38 - 00:${targetDuration}`,
+        visualDescription:
+          "Kaito slowly turns his head around, his warm expression replaced by a dead, hollow stare. Ren's phone buzzes again: 'RUN.' The locker door slams shut into darkness.",
+        cameraMotion: "Whip-pan backward into shadows as locker door violently shuts",
+        lightingAndColor: "Pitch black shadow swallowing the frame",
+        veoPrompt:
+          "9:16 vertical video. [00:38-00:52] Boy turns with sinister cold expression. Locker slams shut. Screen cuts to black.",
+        nativeAudioCue: "Massive metal locker slam: CLANG, echoing into the opening beat",
+        speaker: "Kaito",
+        dialogue: s4Dialogue,
+        subtitles: s4Dialogue,
+      },
+    ];
+
+    const fullNarrationText =
+      "They said nobody disappeared. But when I dialed the missing student's phone, the ringtone came from my best friend's backpack. He turned around with a look I'd never seen before. Everyone ignored him... until tomorrow.";
+
+    return {
+      storyboard,
+      fullNarrationText,
+      srtFormattedSubtitles:
+        "1\n00:00:00,000 --> 00:00:03,000\nLOOK AT HIS LOCKER. HE HAS HIS PHONE.\n\n2\n00:00:03,000 --> 00:00:18,000\nYou gotta stop bringing up names that don't exist.\n\n3\n00:00:18,000 --> 00:00:38,000\nThen why is his phone ringing in your backpack, Kaito?\n\n4\n00:00:38,000 --> 00:00:52,000\nYou should have stayed ignored, Ren.",
+      onScreenText: "THE BEST FRIEND'S SECRET 💀",
+      captionHeadline: "And Ren's best friend is hiding something terrifying... 👀",
+      hashtags: ["EveryoneIgnoredHim", "AnimeEdits", "Betrayal", "Ren", "AnimeThriller"],
+    };
+  }
+
+  // 3. THE ERASED CLASSMATE (Sensory Paradox)
+  if (
+    ideaId === "idea_classroom_erased_classmate" ||
+    (titleLower.includes("erased") && titleLower.includes("classmate")) ||
+    hookLower.includes("pencil fell") ||
+    hookLower.includes("dissolve")
+  ) {
+    const s1Dialogue = hookQuote || '"Ren blinked. The boy sitting in front of him vanished mid-sentence."';
+    const s2Dialogue = '"Ren! Stop daydreaming and take your seat! Why are you screaming at empty air?"';
+    const s3Dialogue = '"Look at the class photo! He was right here! Look at the photo!"';
+    const s4Dialogue = '"DON\'T BLINK. YOU\'RE NEXT."';
+
+    const storyboard: StoryboardScene[] = [
+      {
+        sceneNumber: 1,
+        name: "The Dissolving Classmate Hook",
+        timeframe: "00:00 - 00:03",
+        visualDescription:
+          "Close-up of a student in front of Ren turning around with a smile. In mid-motion, his body turns into digital static particles and vanishes completely. His yellow pencil drops: CLATTER onto the floor.",
+        cameraMotion: "Snap zoom from the student's turning face down to the bouncing yellow pencil on the floorboards",
+        lightingAndColor: "Bright morning school light suddenly fracturing with electric blue static artifacts",
+        veoPrompt:
+          "9:16 vertical video. [00:00-00:03] Japanese classroom. Teenage boy dissolves into blue digital static mid-sentence. Pencil falls to floor with clatter. High impact anime motion.",
+        nativeAudioCue: "Sharp digital glitch sound, wooden pencil bouncing on floor, dead silence",
+        speaker: "Ren",
+        dialogue: s1Dialogue,
+        subtitles: s1Dialogue,
+      },
+      {
+        sceneNumber: 2,
+        name: "The Empty Chair Panic",
+        timeframe: "00:03 - 00:18",
+        visualDescription:
+          "Ren kicks his desk back in sheer terror, pointing at the empty wooden chair. The teacher drops her lesson book, furious, while other students snicker at Ren's panic.",
+        cameraMotion: "Low angle Dutch tilt tracking Ren stumbling backwards against his desk",
+        lightingAndColor: "Harsh yellow chalkboard lights and stark classroom shadows",
+        veoPrompt:
+          "9:16 vertical video. [00:03-00:18] Classroom commotion. Student knocks desk over pointing at empty seat. Teacher scolding. Anime suspense, Ufotable style.",
+        nativeAudioCue: "Desks screeching on linoleum floor, teacher shouting, students laughing",
+        speaker: "Teacher",
+        dialogue: s2Dialogue,
+        subtitles: s2Dialogue,
+      },
+      {
+        sceneNumber: 3,
+        name: "The Dissolving Photo Evidence",
+        timeframe: "00:18 - 00:38",
+        visualDescription:
+          "Ren pulls up the homeroom group photo on his smartphone screen. As he points to his classmate's face, the image glitches and the classmate's face dissolves into blurred empty background in real time.",
+        cameraMotion: "Macro extreme close-up of smartphone screen pixels fracturing and rewriting themselves",
+        lightingAndColor: "Phone screen phosphor glare casting cold blue glow across Ren's trembling fingers",
+        veoPrompt:
+          "9:16 vertical video. [00:18-00:38] Macro shot of smartphone photo. A person in the photo physically erases and disappears leaving empty background. Digital timeline glitch anime.",
+        nativeAudioCue: "High-pitch frequency tone rising in volume, phone static hum",
+        speaker: "Ren",
+        dialogue: s3Dialogue,
+        subtitles: s3Dialogue,
+      },
+      {
+        sceneNumber: 4,
+        name: "The Chilling Warning & Clatter Loop",
+        timeframe: `00:38 - 00:${targetDuration}`,
+        visualDescription:
+          "The phone vibrates again. A new message text appears in red font: 'DON\\'T BLINK. YOU\\'RE NEXT.' The pencil on the floor rattles and rolls into the desk leg.",
+        cameraMotion: "Slow pull-back to wide dark classroom as the lights flicker off",
+        lightingAndColor: "Fluorescent tubes buzzing out one by one into darkness",
+        veoPrompt:
+          "9:16 vertical video. [00:38-00:53] Classroom lights cut out one by one. Red text on glowing phone: YOU'RE NEXT. Fade to black.",
+        nativeAudioCue: "Fluorescent tube power cut: POP, pencil rolling clatter looping to start",
+        speaker: "Unknown Sender (Tomorrow)",
+        dialogue: s4Dialogue,
+        subtitles: s4Dialogue,
+      },
+    ];
+
+    const fullNarrationText =
+      "He was talking to me two seconds ago. Then he simply dissolved into thin air. His pencil hit the floor. The teacher looked at me like I was insane. And when I checked the class photo... he had been erased from history.";
+
+    return {
+      storyboard,
+      fullNarrationText,
+      srtFormattedSubtitles:
+        "1\n00:00:00,000 --> 00:00:03,000\nRen blinked. The boy sitting in front of him vanished mid-sentence.\n\n2\n00:00:03,000 --> 00:00:18,000\nWhy are you screaming at empty air?\n\n3\n00:00:18,000 --> 00:00:38,000\nLook at the photo! He was right here!\n\n4\n00:00:38,000 --> 00:00:53,000\nDON'T BLINK. YOU'RE NEXT.",
+      onScreenText: "ERASED FROM HISTORY ⏳",
+      captionHeadline: "One student disappears. Nobody remembers him. 👀",
+      hashtags: ["EveryoneIgnoredHim", "AnimeEdits", "PsychologicalAnime", "Ren", "GamerAnime"],
+    };
+  }
+
+  // 4. THE YAMANOTE LINE AT 4:18 PM (Reluctant Guardian)
+  if (
+    ideaId === "idea_yamanote_platform_rescue" ||
+    titleLower.includes("yamanote") ||
+    (titleLower.includes("train") && titleLower.includes("4:18")) ||
+    hookLower.includes("yellow line")
+  ) {
+    const s1Dialogue = hookQuote || '"Step back from the yellow line. NOW."';
+    const s2Dialogue = '"Let go of me, Ren! Who do you think you are, touching my bag?"';
+    const s3Dialogue = '"Look at the tracks. Tell me what would have happened to you."';
+    const s4Dialogue = '"ONE SAVED. THREE MORE TO GO."';
+
+    const storyboard: StoryboardScene[] = [
+      {
+        sceneNumber: 1,
+        name: "The 4:18 PM Station Yellow Line Hook",
+        timeframe: "00:00 - 00:03",
+        visualDescription:
+          "Packed Shinjuku train platform at rush hour. Electronic platform clock reads 04:17:55. A girl in a school uniform stands glued to her phone directly on the tactile yellow warning line.",
+        cameraMotion: "Snap-zoom from digital platform clock to the yellow line and approaching tunnel headlight",
+        lightingAndColor: "Harsh underground station sodium lighting with cold train LED tunnel beacons",
+        veoPrompt:
+          "9:16 vertical video. [00:00-00:03] Crowded Tokyo train platform. Teen girl distracted on phone near yellow line. Digital clock hits 4:17:58. Train lights approach. High tension anime.",
+        nativeAudioCue: "Approaching train horn, platform warning chimes, loud rushing wind in tunnel",
+        speaker: "Ren",
+        dialogue: s1Dialogue,
+        subtitles: s1Dialogue,
+      },
+      {
+        sceneNumber: 2,
+        name: "The Countdown on Platform 2",
+        timeframe: "00:03 - 00:18",
+        visualDescription:
+          "Ren checks his screen: '4:18 PM. TRACK 2 MECHANICAL SPARK. PULL HER BACK.' The girl glares at Ren in disgust as he approaches, but the clock flips to 04:18:00.",
+        cameraMotion: "Handheld tracking shot pushing past crowded commuters toward the platform edge",
+        lightingAndColor: "Flickering tunnel headlights casting rapid strobing shadows",
+        veoPrompt:
+          "9:16 vertical video. [00:03-00:18] Anime boy rushing through train commuters to reach platform edge. Girl looks annoyed. Fast kinetic camera movement.",
+        nativeAudioCue: "Metallic track rattle intensifying, commuters' ambient chatter",
+        speaker: "Classmate",
+        dialogue: s2Dialogue,
+        subtitles: s2Dialogue,
+      },
+      {
+        sceneNumber: 3,
+        name: "The Electrical Rail Arc Blast",
+        timeframe: "00:18 - 00:38",
+        visualDescription:
+          "Ren lunges forward and violently yanks her backward by her backpack just as a massive blinding electrical explosion arcs across the third rail, vaporizing the metal platform edge exactly where her feet stood.",
+        cameraMotion: "Extreme slow motion 120fps bullet-time orbiting shot around the blue electrical arc explosion",
+        lightingAndColor: "Blinding electric blue and violet flash illuminating both faces in terrified awe",
+        veoPrompt:
+          "9:16 vertical video. [00:18-00:38] Anime boy pulls girl backward from train edge. Huge electric blue spark explosion on train track right where she stood. Epic Ufotable anime VFX.",
+        nativeAudioCue: "Massive electrical blast explosion: BOOM-CRACKLE, emergency brakes screeching, commuters screaming",
+        speaker: "Ren",
+        dialogue: s3Dialogue,
+        subtitles: s3Dialogue,
+      },
+      {
+        sceneNumber: 4,
+        name: "The Next Warning & Train Brake Loop",
+        timeframe: `00:38 - 00:${targetDuration}`,
+        visualDescription:
+          "The girl collapses on the platform trembling, looking up at Ren in shock. Ren looks down at his phone. The screen updates: 'ONE SAVED. THREE MORE TO GO.' The train brakes screech into the loop.",
+        cameraMotion: "Low angle pedestal shot rising behind Ren's silhouette as the train roars past",
+        lightingAndColor: "Train window lights strobing across Ren's face in the darkness",
+        veoPrompt:
+          "9:16 vertical video. [00:38-00:54] Girl on platform looking up in tears of gratitude. Boy looks at glowing phone message. Train passes. Fade to black.",
+        nativeAudioCue: "Deafening metallic train brake screech echoing into the opening platform chime",
+        speaker: "Unknown Sender (Tomorrow)",
+        dialogue: s4Dialogue,
+        subtitles: s4Dialogue,
+      },
+    ];
+
+    const fullNarrationText =
+      "The text gave me the exact second. 4:18 PM. She spent all morning making fun of me in homeroom. But when the rail sparked, I pulled her back anyway. Now she knows... the messages from tomorrow are real.";
+
+    return {
+      storyboard,
+      fullNarrationText,
+      srtFormattedSubtitles:
+        "1\n00:00:00,000 --> 00:00:03,000\nStep back from the yellow line. NOW.\n\n2\n00:00:03,000 --> 00:00:18,000\nLet go of me, Ren! Who do you think you are?\n\n3\n00:00:18,000 --> 00:00:38,000\nLook at the tracks. Tell me what would have happened.\n\n4\n00:00:38,000 --> 00:00:54,000\nONE SAVED. THREE MORE TO GO.",
+      onScreenText: "4:18 PM TRAIN RESCUE ⚡",
+      captionHeadline: "WHAT IF YOU RECEIVED A MESSAGE FROM TOMORROW? 📱",
+      hashtags: ["EveryoneIgnoredHim", "AnimeEdits", "ActionAnime", "Ren", "TimeParadox"],
+    };
+  }
+
+  // 5. THE 24-HOUR VOICE NOTE (Sound-First ASMR)
+  if (
+    ideaId === "idea_voice_note_future_ren" ||
+    (titleLower.includes("voice") && titleLower.includes("note")) ||
+    hookLower.includes("speaker") ||
+    hookLower.includes("voice note")
+  ) {
+    const s1Dialogue = hookQuote || '"Ren... this is you from tomorrow. Run."';
+    const s2Dialogue = '"In five seconds, someone will knock twice on your front door. Do not answer it."';
+    const s3Dialogue = '*KNOCK. KNOCK.*';
+    const s4Dialogue = '"THE PERSON KNOCKING HAS YOUR FACE."';
+
+    const storyboard: StoryboardScene[] = [
+      {
+        sceneNumber: 1,
+        name: "The Glitching Audio Wave Hook",
+        timeframe: "00:00 - 00:03",
+        visualDescription:
+          "Complete pitch darkness for 2 seconds. The only illumination is a green audio waveform visualizer vibrating across a cracked smartphone screen on a desk, playing a low, raspy whisper.",
+        cameraMotion: "Static macro shot focused entirely on the pulsating green waveform on the screen",
+        lightingAndColor: "Pitch black room with phosphor green waveform glow",
+        veoPrompt:
+          "9:16 vertical video. [00:00-00:03] Dark room. Macro close-up of smartphone screen with glowing green audio waveform visualizer. Whispering voice note plays. Psychological anime aesthetic.",
+        nativeAudioCue: "Heavy distorted breathing, static crackle, low eerie whisper through phone speaker",
+        speaker: "Future Ren",
+        dialogue: s1Dialogue,
+        subtitles: s1Dialogue,
+      },
+      {
+        sceneNumber: 2,
+        name: "The Bedroom Isolation",
+        timeframe: "00:03 - 00:18",
+        visualDescription:
+          "Ren sits up in bed, drenched in cold sweat. Outside his window, heavy rain pours down in sheets. The voice note continues playing through the speaker, counting down.",
+        cameraMotion: "Slow pull-back showing Ren sitting frozen in his dark apartment bedroom",
+        lightingAndColor: "Rain streaks reflecting neon blue city lights across the wall",
+        veoPrompt:
+          "9:16 vertical video. [00:03-00:18] Anime boy sitting up in bed in dark room. Rain pours outside window. Audio waveform counts down. Intense suspense anime.",
+        nativeAudioCue: "Heavy rain pounding glass, clock second hand ticking: TICK... TICK... TICK",
+        speaker: "Future Ren",
+        dialogue: s2Dialogue,
+        subtitles: s2Dialogue,
+      },
+      {
+        sceneNumber: 3,
+        name: "The Double Knock in the Hallway",
+        timeframe: "00:18 - 00:38",
+        visualDescription:
+          "Down the dark hallway toward Ren's apartment front door. Exactly as the countdown hits zero: heavy wooden door shakes from two slow, deliberate knocks. KNOCK. KNOCK.",
+        cameraMotion: "Slow creeping push-in down the narrow dark hallway toward the front door peephole",
+        lightingAndColor: "Dark silhouette with faint yellow hall light bleeding under the door frame",
+        veoPrompt:
+          "9:16 vertical video. [00:18-00:38] Dark hallway leading to apartment front door. Slow push-in. Two heavy loud knocks on door. Terrifying suspense anime.",
+        nativeAudioCue: "Two heavy, hollow wooden door knocks: THUD... THUD... followed by dead silence",
+        speaker: "Door Knocker",
+        dialogue: s3Dialogue,
+        subtitles: s3Dialogue,
+      },
+      {
+        sceneNumber: 4,
+        name: "The Terrifying Reveal & Static Loop",
+        timeframe: `00:38 - 00:${targetDuration}`,
+        visualDescription:
+          "Ren's phone flashes with a final text in blood red: 'THE PERSON KNOCKING HAS YOUR FACE.' The peephole shows a shadowed silhouette staring directly in. Static glitches to black.",
+        cameraMotion: "Macro extreme zoom into the peephole lens distorting a grinning face",
+        lightingAndColor: "Flickering emergency red battery light cutting to total black",
+        veoPrompt:
+          "9:16 vertical video. [00:38-00:49] Phone screen flashes red warning text. Silhouette visible through door peephole. Static cut to black.",
+        nativeAudioCue: "Violent speaker static burst snapping into dead silence, looping to frame 1",
+        speaker: "Future Ren",
+        dialogue: s4Dialogue,
+        subtitles: s4Dialogue,
+      },
+    ];
+
+    const fullNarrationText =
+      "Dead silence. Then my phone played an audio note from tomorrow. The voice was mine. It told me not to open the door when the knocks came. Two seconds later... the knocking started.";
+
+    return {
+      storyboard,
+      fullNarrationText,
+      srtFormattedSubtitles:
+        "1\n00:00:00,000 --> 00:00:03,000\nRen... this is you from tomorrow. Run.\n\n2\n00:00:03,000 --> 00:00:18,000\nSomeone will knock twice on your front door. Do not answer it.\n\n3\n00:00:18,000 --> 00:00:38,000\n*KNOCK. KNOCK.*\n\n4\n00:00:38,000 --> 00:00:49,000\nTHE PERSON KNOCKING HAS YOUR FACE.",
+      onScreenText: "A VOICE FROM TOMORROW 🎧",
+      captionHeadline: "WHAT IF THE PERSON SENDING THE MESSAGES ISN'T A STRANGER? 💀",
+      hashtags: ["EveryoneIgnoredHim", "AnimeEdits", "AnimeASMR", "HorrorAnime", "Ren"],
+    };
+  }
+
+  // 6. THE ROOFTOP LOCKDOWN (Reluctant Guardian)
+  if (
+    ideaId === "idea_rooftop_lockdown_protective" ||
+    (titleLower.includes("rooftop") && titleLower.includes("lockdown")) ||
+    hookLower.includes("barricaded") ||
+    hookLower.includes("stairwell")
+  ) {
+    const s1Dialogue = hookQuote || '"Ren barricaded the high school rooftop door as shadows gathered: \'Stay behind me.\'"';
+    const s2Dialogue = '"What are those things coming up the stairs, Ren?!"';
+    const s3Dialogue = '"Follow the text. Room 3-B has the emergency ladder to the courtyard. Move!"';
+    const s4Dialogue = '"THEY WILL FORGET YOU EXIST IF THEY TOUCH YOU."';
+
+    const storyboard: StoryboardScene[] = [
+      {
+        sceneNumber: 1,
+        name: "The Rooftop Barricade Hook",
+        timeframe: "00:00 - 00:03",
+        visualDescription:
+          "Heavy iron rooftop door slamming shut. Ren rams a steel security bar across the brackets. Outside on the windy rooftop, two terrified classmates huddle behind him under stormy skies.",
+        cameraMotion: "Snap zoom onto the heavy iron bar clanging into the steel bracket",
+        lightingAndColor: "Stormy gray and violet thundercloud skies, wind howling",
+        veoPrompt:
+          "9:16 vertical video. [00:00-00:03] High school rooftop during dark storm. Anime boy slams heavy iron door bar shut, protecting crying students behind him. MAPPA action anime.",
+        nativeAudioCue: "Heavy metallic door slam: BANG, iron bar clatter, howling rooftop wind",
+        speaker: "Ren",
+        dialogue: s1Dialogue,
+        subtitles: s1Dialogue,
+      },
+      {
+        sceneNumber: 2,
+        name: "The Stairwell Whispers",
+        timeframe: "00:03 - 00:18",
+        visualDescription:
+          "The frosted glass window of the rooftop door begins frosting over with black ice. Ominous faceless silhouettes rattle the door handles violently from the stairwell.",
+        cameraMotion: "Push-in toward the rattling iron door handle as ice crystals spread across the glass",
+        lightingAndColor: "Cold cobalt frost creeping over iron surfaces",
+        veoPrompt:
+          "9:16 vertical video. [00:03-00:18] Rooftop iron door rattling violently from outside. Black ice spreading across glass. High suspense anime.",
+        nativeAudioCue: "Violent door handle shaking, demonic muffled whispers through iron door",
+        speaker: "Classmates",
+        dialogue: s2Dialogue,
+        subtitles: s2Dialogue,
+      },
+      {
+        sceneNumber: 3,
+        name: "The Blueprint from Tomorrow",
+        timeframe: "00:18 - 00:38",
+        visualDescription:
+          "Ren checks his phone displaying a glowing digital blueprint of the school sent from tomorrow. He points the students to the ventilation maintenance hatch leading to the gymnasium roof.",
+        cameraMotion: "Whip pan from phone blueprint to the rusted metal access hatch",
+        lightingAndColor: "Neon amber blueprint glow reflecting off the wet gravel roof",
+        veoPrompt:
+          "9:16 vertical video. [00:18-00:38] Anime boy opens maintenance hatch on rooftop, ushering students inside. Lightning flashes. Cinematic anime action.",
+        nativeAudioCue: "Thunderclap roaring, hatch metal creaking open, hurried footsteps on gravel",
+        speaker: "Ren",
+        dialogue: s3Dialogue,
+        subtitles: s3Dialogue,
+      },
+      {
+        sceneNumber: 4,
+        name: "The Escape Route Loop",
+        timeframe: `00:38 - 00:${targetDuration}`,
+        visualDescription:
+          "The iron door cracks open with a burst of black static. Ren locks eyes with the shadow, raising his phone as the screen emits a blinding temporal flash, looping into the door slam.",
+        cameraMotion: "Dutch angle push-in onto Ren's defiant gaze before the whiteout flash",
+        lightingAndColor: "Blinding whiteout flash swallowing the dark rooftop",
+        veoPrompt:
+          "9:16 vertical video. [00:38-00:51] Rooftop door bursts open. Anime boy raises glowing smartphone emitting blinding white flash. Seamless transition.",
+        nativeAudioCue: "High-voltage flash discharge: FLASH-BOOM, looping cleanly to the door slam",
+        speaker: "Unknown Sender (Tomorrow)",
+        dialogue: s4Dialogue,
+        subtitles: s4Dialogue,
+      },
+    ];
+
+    const fullNarrationText =
+      "Shadows flooded the school stairwell, erasing every memory in their path. I slammed the rooftop door and shoved the heavy iron bar into place. They laughed at me yesterday. But today, I'm the only reason they're still alive.";
+
+    return {
+      storyboard,
+      fullNarrationText,
+      srtFormattedSubtitles:
+        "1\n00:00:00,000 --> 00:00:03,000\nRen barricaded the rooftop door: Stay behind me.\n\n2\n00:00:03,000 --> 00:00:18,000\nWhat are those things coming up the stairs?!\n\n3\n00:00:18,000 --> 00:00:38,000\nFollow the text. The maintenance hatch is open. Move!\n\n4\n00:00:38,000 --> 00:00:51,000\nTHEY WILL FORGET YOU EXIST IF THEY TOUCH YOU.",
+      onScreenText: "ROOFTOP LOCKDOWN 🚨",
+      captionHeadline: "Ren protecting the survivors from the timeline collapse.",
+      hashtags: ["EveryoneIgnoredHim", "AnimeEdits", "SurvivalAnime", "Ren"],
+    };
+  }
+
+  // 7. THE IMPOSSIBLE EXAM (High-IQ Checkmate)
+  if (
+    ideaId === "idea_blackboard_prediction_checkmate" ||
+    titleLower.includes("impossible exam") ||
+    (titleLower.includes("exam") && titleLower.includes("blackboard")) ||
+    hookLower.includes("blackboard") ||
+    hookLower.includes("chalk")
+  ) {
+    const s1Dialogue = hookQuote || '"Before the proctor opened the sealed exam, Ren wrote the exact 5 questions on the board."';
+    const s2Dialogue = '"Kurokawa! Step away from the blackboard immediately or you are expelled!"';
+    const s3Dialogue = '"Go ahead and crack the red wax seal, Professor. Check question number four."';
+    const s4Dialogue = '"You called me a failure yesterday. Tomorrow, you will ask for my help."';
+
+    const storyboard: StoryboardScene[] = [
+      {
+        sceneNumber: 1,
+        name: "The Sealed Exam Envelope Hook",
+        timeframe: "00:00 - 00:03",
+        visualDescription:
+          "Silent exam hall. Ren stands at the blackboard with white chalk. In the center of the room, the head proctor holds up an untouched manila envelope with an unbroken red wax seal stamped 'CONFIDENTIAL'.",
+        cameraMotion: "Snap zoom from the unbroken red wax seal to Ren's calm hand drawing complex calculus equations on the board",
+        lightingAndColor: "Clean Japanese high school morning sunlight with chalk dust particles floating in light rays",
+        veoPrompt:
+          "9:16 vertical video. [00:00-00:03] High school exam room. Boy writes complex formulas on blackboard while teacher holds sealed confidential exam packet. High IQ anime checkmate.",
+        nativeAudioCue: "Sharp rhythmic chalk clicks on blackboard: TAP-TAP-SCRAPE, absolute hall silence",
+        speaker: "Ren",
+        dialogue: s1Dialogue,
+        subtitles: s1Dialogue,
+      },
+      {
+        sceneNumber: 2,
+        name: "The Proctor's Broken Seal",
+        timeframe: "00:03 - 00:18",
+        visualDescription:
+          "The proctor angrily slices open the red wax seal with a brass letter opener. The entire lecture hall of 80 students watches in stunned, breathless silence.",
+        cameraMotion: "Tracking close-up of the brass blade cracking through red wax, paper unfolding",
+        lightingAndColor: "High contrast rim lighting on the proctor's furrowed brow",
+        veoPrompt:
+          "9:16 vertical video. [00:03-00:18] Strict Japanese teacher cracks wax seal on exam paper. Classmates stare in shock. Cinematic anime tension.",
+        nativeAudioCue: "Wax cracking: CRACK, paper rustle, collective student gasps",
+        speaker: "Proctor",
+        dialogue: s2Dialogue,
+        subtitles: s2Dialogue,
+      },
+      {
+        sceneNumber: 3,
+        name: "The Impossible Match",
+        timeframe: "00:18 - 00:38",
+        visualDescription:
+          "The proctor's jaw drops. His hands tremble as he holds the exam paper up against the blackboard. Every single variable, diagram, and decimal point matches Ren's chalk writing with 100% precision.",
+        cameraMotion: "Extreme close-up split screen comparing the printed exam paper to the chalk on the board",
+        lightingAndColor: "Cool blue dramatic shading sweeping across the stunned classroom",
+        veoPrompt:
+          "9:16 vertical video. [00:18-00:38] Teacher's trembling hands holding exam paper against blackboard. The equations match perfectly. Teacher turns pale in disbelief. Death Note style.",
+        nativeAudioCue: "Deep sub-bass heartbeat drop, paper fluttering, students murmuring in disbelief",
+        speaker: "Ren",
+        dialogue: s3Dialogue,
+        subtitles: s3Dialogue,
+      },
+      {
+        sceneNumber: 4,
+        name: "The Chalk Snap Loop",
+        timeframe: `00:38 - 00:${targetDuration}`,
+        visualDescription:
+          "Ren snaps the chalk in half between two fingers and drops the pieces into the tray. He turns with a confident, piercing stare into the camera as his phone buzzes with tomorrow's next warning.",
+        cameraMotion: "Slow tracking pan to Ren's smirking profile, ending on a snap cut to black",
+        lightingAndColor: "Warm sunlight highlighting Ren's eyes while the classroom fades into shadow",
+        veoPrompt:
+          "9:16 vertical video. [00:38-00:50] Anime boy snaps chalk in half, smirking confidently at stunned classroom. Phone buzzes in pocket. Cut to black.",
+        nativeAudioCue: "Crisp chalk snap: CLACK, looping cleanly into the opening blackboard tap",
+        speaker: "Ren",
+        dialogue: s4Dialogue,
+        subtitles: s4Dialogue,
+      },
+    ];
+
+    const fullNarrationText =
+      "They called me a failure who couldn't pass a single test. So before the proctor even cracked the wax seal on the national exam, I wrote every question on the board. The messages from tomorrow don't lie.";
+
+    return {
+      storyboard,
+      fullNarrationText,
+      srtFormattedSubtitles:
+        "1\n00:00:00,000 --> 00:00:03,000\nRen wrote the exact 5 questions on the board.\n\n2\n00:00:03,000 --> 00:00:18,000\nKurokawa! Step away from the blackboard immediately!\n\n3\n00:00:18,000 --> 00:00:38,000\nCheck question number four, Professor.\n\n4\n00:00:38,000 --> 00:00:50,000\nYou called me a failure. Tomorrow, you'll ask for help.",
+      onScreenText: "HE PREDICTED THE FUTURE 📝",
+      captionHeadline: "Everyone laughed at him. But nobody knew what was coming…",
+      hashtags: ["EveryoneIgnoredHim", "AnimeEdits", "HighIQAnime", "Ren", "MindGames"],
+    };
+  }
+
+  // 8. RAIN ON THE SHINJUKU CROSSWALK (Sound-First ASMR)
+  if (
+    ideaId === "idea_rain_crosswalk_countdown" ||
+    titleLower.includes("crosswalk") ||
+    (titleLower.includes("rain") && titleLower.includes("shinjuku")) ||
+    hookLower.includes("crosswalk") ||
+    hookLower.includes("countdown")
+  ) {
+    const s1Dialogue = hookQuote || '"Only the sound of torrential rain and a neon countdown: 3... 2... 1..."';
+    const s2Dialogue = '"Hey, watch where you\'re walking, weirdo!"';
+    const s3Dialogue = '"Hold your breath. Look at the intersection."';
+    const s4Dialogue = '"TWO SECONDS SLOWER AND YOU WOULD BE A HEADLINE."';
+
+    const storyboard: StoryboardScene[] = [
+      {
+        sceneNumber: 1,
+        name: "The Crosswalk Countdown Hook",
+        timeframe: "00:00 - 00:03",
+        visualDescription:
+          "Macro shot of heavy rain drumming on a clear vinyl umbrella. Shibuya scramble crosswalk under neon signs. Neon green pedestrian countdown timer flashes: 3... 2... 1...",
+        cameraMotion: "Low angle tracking across wet asphalt reflecting vibrant neon billboards",
+        lightingAndColor: "Tokyo rain noir, neon cyan and magenta puddles splashing under shoes",
+        veoPrompt:
+          "9:16 vertical video. [00:00-00:03] Rain drumming on transparent umbrella at Shibuya crosswalk at night. Neon lights reflecting on wet asphalt. ASMR rain audio aesthetic.",
+        nativeAudioCue: "Crisp binaural rain on vinyl umbrella, wet footstep splashes, distant traffic hum",
+        speaker: "Ren",
+        dialogue: s1Dialogue,
+        subtitles: s1Dialogue,
+      },
+      {
+        sceneNumber: 2,
+        name: "The Approaching Headlights",
+        timeframe: "00:03 - 00:18",
+        visualDescription:
+          "A distracted commuter wearing headphones steps onto the road without looking up. Blinding truck headlights pierce the pouring rain as horn blares wildly.",
+        cameraMotion: "Whip-pan from commuter's white earbuds to blazing truck headlights skidding sideways",
+        lightingAndColor: "Blinding white halogen glare reflecting on rain streaks",
+        veoPrompt:
+          "9:16 vertical video. [00:03-00:18] Pedestrian with headphones stepping into rain street. Truck headlights approaching. Anime suspense.",
+        nativeAudioCue: "Deafening truck air horn: HOOOORN, tires skidding on wet road: SCREEECH",
+        speaker: "Commuter",
+        dialogue: s2Dialogue,
+        subtitles: s2Dialogue,
+      },
+      {
+        sceneNumber: 3,
+        name: "The Millisecond Save",
+        timeframe: "00:18 - 00:38",
+        visualDescription:
+          "Ren drops his umbrella and violently tackles the commuter back onto the curb. The heavy delivery truck spins out, smashing through the metal guardrail inches from their heads.",
+        cameraMotion: "Slow motion orbital pan around the sliding truck spraying water across the sidewalk",
+        lightingAndColor: "Sparks flying from metal barrier impact lighting up the rainy night",
+        veoPrompt:
+          "9:16 vertical video. [00:18-00:38] Anime boy tackles pedestrian out of path of skidding truck. Water splashes in slow motion. High budget anime VFX.",
+        nativeAudioCue: "Violent metal barrier collision: CRASH, water wall splashing, rain pouring",
+        speaker: "Ren",
+        dialogue: s3Dialogue,
+        subtitles: s3Dialogue,
+      },
+      {
+        sceneNumber: 4,
+        name: "The Water Droplet Loop",
+        timeframe: `00:38 - 00:${targetDuration}`,
+        visualDescription:
+          "The commuter stares at the mangled guardrail in pure shock. Ren picks up his transparent umbrella. A single water droplet drips from the tip, snapping into the opening rain beat.",
+        cameraMotion: "Extreme close-up on a falling water droplet hitting a puddle in macro slow-mo",
+        lightingAndColor: "Neon reflections rippling across dark water",
+        veoPrompt:
+          "9:16 vertical video. [00:38-00:52] Close-up of water drop hitting puddle with neon light reflections. Seamless loop back to raining crosswalk.",
+        nativeAudioCue: "Crisp water drop: PLINK, echoing into the opening rain rhythm",
+        speaker: "Ren",
+        dialogue: s4Dialogue,
+        subtitles: s4Dialogue,
+      },
+    ];
+
+    const fullNarrationText =
+      "Torrential rain. Shibuya crosswalk. The countdown hit zero and headlights skidded across the asphalt. I yanked him backward by two inches. Another catastrophe avoided... thanks to tomorrow's message.";
+
+    return {
+      storyboard,
+      fullNarrationText,
+      srtFormattedSubtitles:
+        "1\n00:00:00,000 --> 00:00:03,000\nTorrential rain and a neon countdown: 3... 2... 1...\n\n2\n00:00:03,000 --> 00:00:18,000\nHey, watch where you're walking!\n\n3\n00:00:18,000 --> 00:00:38,000\nHold your breath. Look at the intersection.\n\n4\n00:00:38,000 --> 00:00:52,000\nTWO SECONDS SLOWER AND YOU WOULD BE A HEADLINE.",
+      onScreenText: "3 SECONDS TO IMPACT ⏱️",
+      captionHeadline: "A single millisecond between life and death.",
+      hashtags: ["EveryoneIgnoredHim", "AnimeEdits", "AnimeEditsASMR", "Ren"],
+    };
+  }
+
+  // 9. THE SENDER UNMASKED (Sensory Paradox)
+  if (
+    ideaId === "idea_sender_unmasked_paradox" ||
+    titleLower.includes("sender unmasked") ||
+    hookLower.includes("mirror") ||
+    hookLower.includes("mystery number")
+  ) {
+    const s1Dialogue = hookQuote || '"Ren finally dialed the mystery number. The phone was ringing in his own room."';
+    const s2Dialogue = '"Why is the ringtone coming from the mirror...?"';
+    const s3Dialogue = '"You ignored me yesterday. But tomorrow, you will understand why we had to disappear."';
+    const s4Dialogue = '"I AM YOU FROM FIVE YEARS AHEAD."';
+
+    const storyboard: StoryboardScene[] = [
+      {
+        sceneNumber: 1,
+        name: "The Mirror Call Hook",
+        timeframe: "00:00 - 00:03",
+        visualDescription:
+          "Dimly lit bathroom under flickering fluorescent bulb. Ren presses the green CALL button on the unknown caller number. Immediately, a phone ringtone chimes from right inside his bathroom mirror.",
+        cameraMotion: "Slow tracking push-in toward the bathroom mirror reflecting Ren holding his phone to his ear",
+        lightingAndColor: "Sickly green fluorescent flicker with deep charcoal shadows",
+        veoPrompt:
+          "9:16 vertical video. [00:00-00:03] Dark bathroom. Anime boy calls mystery number. Ringtone echoes from mirror reflection. Psychological anime thriller.",
+        nativeAudioCue: "High-pitch dial tone, sudden eerie electronic ringtone chiming from behind glass",
+        speaker: "Ren",
+        dialogue: s1Dialogue,
+        subtitles: s1Dialogue,
+      },
+      {
+        sceneNumber: 2,
+        name: "The Ringing Reflection",
+        timeframe: "00:03 - 00:18",
+        visualDescription:
+          "Ren lowers his phone down to his chest. But in the mirror, his reflection DOES NOT lower the phone. The reflection stands perfectly still, holding the phone to its ear with a grim, scarred expression.",
+        cameraMotion: "Extreme Dutch angle close-up on the discrepancy between Ren and his reflection",
+        lightingAndColor: "Mirror reflection illuminated with faint violet temporal shimmer",
+        veoPrompt:
+          "9:16 vertical video. [00:03-00:18] Boy lowers phone. His reflection in mirror keeps holding phone to ear and stares at him. Chilling horror anime moment.",
+        nativeAudioCue: "Phone receiver click, absolute silence, faint temporal humming vibration",
+        speaker: "Ren",
+        dialogue: s2Dialogue,
+        subtitles: s2Dialogue,
+      },
+      {
+        sceneNumber: 3,
+        name: "The Future Self Warning",
+        timeframe: "00:18 - 00:38",
+        visualDescription:
+          "The reflection speaks through the phone receiver in Ren's hand. The voice is deeper, mature, filled with regret. The reflection points to the calendar on the wall behind Ren: TOMORROW.",
+        cameraMotion: "Push-in on the reflection's scarred eyes as faint digital time codes float across the pupil",
+        lightingAndColor: "Violet temporal energy bleeding through the mirror surface",
+        veoPrompt:
+          "9:16 vertical video. [00:18-00:38] Mirror reflection speaks through phone. Future older version of the protagonist warning his younger self. Ufotable anime style.",
+        nativeAudioCue: "Resonant mature voice through phone receiver, temporal reverse audio swell",
+        speaker: "Future Ren (Sender)",
+        dialogue: s3Dialogue,
+        subtitles: s3Dialogue,
+      },
+      {
+        sceneNumber: 4,
+        name: "The Paradox Dial Tone Loop",
+        timeframe: `00:38 - 00:${targetDuration}`,
+        visualDescription:
+          "The mirror glass fractures into a spiderweb of cracks without shattering. Ren reaches out to touch it as the line disconnects: BEEP... BEEP... looping into the call button press.",
+        cameraMotion: "Snap zoom onto the spiderweb crack centering on Ren's reflection, cut to black",
+        lightingAndColor: "Mirror fractures glowing with white light then snapping to black",
+        veoPrompt:
+          "9:16 vertical video. [00:38-00:55] Mirror glass cracks in spiderweb pattern. Glowing temporal light. Screen cuts to black.",
+        nativeAudioCue: "Sharp glass crack: CRACK, telephone busy tone: BEEP... BEEP, looping to start",
+        speaker: "Future Ren",
+        dialogue: s4Dialogue,
+        subtitles: s4Dialogue,
+      },
+    ];
+
+    const fullNarrationText =
+      "I dialed the number that had been sending me messages from tomorrow. The ringtone came from my own mirror. My reflection stared back at me, holding the phone to his ear. He wasn't a stranger. He was me from the future.";
+
+    return {
+      storyboard,
+      fullNarrationText,
+      srtFormattedSubtitles:
+        "1\n00:00:00,000 --> 00:00:03,000\nRen dialed the number. The ringtone came from the mirror.\n\n2\n00:00:03,000 --> 00:00:18,000\nWhy is the reflection holding the phone?\n\n3\n00:00:18,000 --> 00:00:38,000\nYou will understand why we had to disappear.\n\n4\n00:00:38,000 --> 00:00:55,000\nI AM YOU FROM FIVE YEARS AHEAD.",
+      onScreenText: "THE SENDER IS REN 💀",
+      captionHeadline: "WHAT IF THE PERSON SENDING THE MESSAGES IS REN HIMSELF?",
+      hashtags: ["EveryoneIgnoredHim", "AnimeEdits", "TimeTravel", "Ren", "PlotTwist"],
+    };
+  }
+
+  // 10. THE ROOM THAT NEVER EXISTED (Reluctant Guardian)
+  if (
+    ideaId === "idea_phantom_room_guardian" ||
+    titleLower.includes("never existed") ||
+    titleLower.includes("room 404") ||
+    hookLower.includes("demolished")
+  ) {
+    const s1Dialogue = hookQuote || '"Ren walked into hospital room 404. \'Room 404 was demolished ten years ago.\'"';
+    const s2Dialogue = '"My friend\'s sister is in that room right now! I received the coordinate message!"';
+    const s3Dialogue = '"Look at the floor plan... the entire fourth wing doesn\'t exist on the blueprints."';
+    const s4Dialogue = '"SHE IS TRAPPED IN THE TIMELINE SHIFT."';
+
+    const storyboard: StoryboardScene[] = [
+      {
+        sceneNumber: 1,
+        name: "The Demolished Ward Hook",
+        timeframe: "00:00 - 00:03",
+        visualDescription:
+          "Sterile hospital hallway at night. Ren stands before a pristine brass door plate marked 'ROOM 404'. Behind him, an elderly head nurse gasps in horror, dropping her chart.",
+        cameraMotion: "Snap zoom from brass door plate '404' to the dropped paper chart fluttering across linoleum",
+        lightingAndColor: "Harsh pale fluorescent hospital lighting with cold green undertones",
+        veoPrompt:
+          "9:16 vertical video. [00:00-00:03] Dark hospital corridor. Boy stands at brass door labeled 404. Nurse drops clipboard in shock. Japanese mystery anime.",
+        nativeAudioCue: "Clipboard clattering on linoleum floor, distant hospital monitor beep",
+        speaker: "Head Nurse",
+        dialogue: s1Dialogue,
+        subtitles: s1Dialogue,
+      },
+      {
+        sceneNumber: 2,
+        name: "The Shifting Corridor",
+        timeframe: "00:03 - 00:18",
+        visualDescription:
+          "The hospital hallway flickers. For a fraction of a second, the walls transform into cracked concrete and abandoned construction dust before snapping back to pristine hospital linoleum.",
+        cameraMotion: "Corridor dolly zoom (Vertigo effect) distorting the walls",
+        lightingAndColor: "Strobing fluorescent tubes cycling between abandoned darkness and clean white",
+        veoPrompt:
+          "9:16 vertical video. [00:03-00:18] Hospital hallway flickering between modern clean room and abandoned decaying ward. Timeline glitch anime.",
+        nativeAudioCue: "Electrical transformer buzzing, faint child's music box chime",
+        speaker: "Ren",
+        dialogue: s2Dialogue,
+        subtitles: s2Dialogue,
+      },
+      {
+        sceneNumber: 3,
+        name: "The Protective Charm",
+        timeframe: "00:18 - 00:38",
+        visualDescription:
+          "Ren pushes the door open. Inside room 404, bathed in soft moonlight, a little girl sleeps peacefully in a hospital bed. Ren places a silver temporal pendant from tomorrow on her bedside table.",
+        cameraMotion: "Slow crane shot floating through the moonlight toward the sleeping girl's bedside",
+        lightingAndColor: "Luminescent silver moonlight pouring through large hospital window",
+        veoPrompt:
+          "9:16 vertical video. [00:18-00:38] Boy enters glowing moonlit hospital room. Places protective silver charm on table next to sleeping girl. Beautiful anime aesthetic.",
+        nativeAudioCue: "Soft metallic clink of silver pendant, gentle breathing, soft heartbeat",
+        speaker: "Ren",
+        dialogue: s3Dialogue,
+        subtitles: s3Dialogue,
+      },
+      {
+        sceneNumber: 4,
+        name: "The Monitor Pulse Loop",
+        timeframe: `00:38 - 00:${targetDuration}`,
+        visualDescription:
+          "The ECG heart monitor beeps steadily: BEEP... BEEP... The silver pendant begins glowing with soft violet runes, stabilizing the room against the timeline collapse. Fade to black.",
+        cameraMotion: "Macro extreme close-up on the pulsing green ECG line looping seamlessly",
+        lightingAndColor: "Green phosphor line glow on black CRT monitor screen",
+        veoPrompt:
+          "9:16 vertical video. [00:38-00:53] Hospital heart monitor glowing green pulse. Silver pendant glows violet. Cut to black.",
+        nativeAudioCue: "Rhythmic medical monitor beep: BEEP, looping to the opening clipboard clatter",
+        speaker: "Unknown Sender (Tomorrow)",
+        dialogue: s4Dialogue,
+        subtitles: s4Dialogue,
+      },
+    ];
+
+    const fullNarrationText =
+      "The text sent me to room 404 to save his sister. The nurses swore the fourth floor was torn down a decade ago. But when the lights flickered... the door appeared. And she was waiting inside.";
+
+    return {
+      storyboard,
+      fullNarrationText,
+      srtFormattedSubtitles:
+        "1\n00:00:00,000 --> 00:00:03,000\nRen walked into room 404. It was demolished ten years ago.\n\n2\n00:00:03,000 --> 00:00:18,000\nMy friend's sister is in that room right now!\n\n3\n00:00:18,000 --> 00:00:38,000\nThe entire fourth wing doesn't exist on blueprints.\n\n4\n00:00:38,000 --> 00:00:53,000\nSHE IS TRAPPED IN THE TIMELINE SHIFT.",
+      onScreenText: "ROOM 404 NEVER EXISTED 🏥",
+      captionHeadline: "A hidden floor trapped in an alternate timeline.",
+      hashtags: ["EveryoneIgnoredHim", "AnimeEdits", "MysteryAnime", "Ren"],
+    };
+  }
+
+  // ==========================================
+  // LEGACY / ALTERNATIVE STORYBOARD BRANCHES
+  // ==========================================
 
   // 1. BLIND JANITOR ORIGIN SECRET (Sensory Paradox)
   if (
@@ -2281,11 +3182,37 @@ export function buildProductionPackage(
   const { storyboard, fullNarrationText, srtFormattedSubtitles, onScreenText, captionHeadline, hashtags } = generated;
 
   const episodeMatch = winningIdea.seriesEpisode.match(/#(\d+)/);
-  const currentEpNum = episodeMatch ? parseInt(episodeMatch[1], 10) : 31;
+  const currentEpNum = episodeMatch ? parseInt(episodeMatch[1], 10) : 1;
   const nextEpNum = currentEpNum + 1;
 
+  const isMysterySeries =
+    winningIdea.title.toLowerCase().includes("tomorrow") ||
+    winningIdea.title.toLowerCase().includes("message") ||
+    winningIdea.title.toLowerCase().includes("erased") ||
+    winningIdea.title.toLowerCase().includes("classmate") ||
+    winningIdea.title.toLowerCase().includes("secret") ||
+    winningIdea.title.toLowerCase().includes("yamanote") ||
+    winningIdea.title.toLowerCase().includes("exam") ||
+    winningIdea.title.toLowerCase().includes("voice note") ||
+    winningIdea.title.toLowerCase().includes("sender") ||
+    winningIdea.title.toLowerCase().includes("crosswalk") ||
+    winningIdea.title.toLowerCase().includes("room") ||
+    winningIdea.title.toLowerCase().includes("ren") ||
+    !winningIdea.title.toLowerCase().includes("mafia");
+
+  const seriesPrefix = isMysterySeries
+    ? "🎬 EVERYONE IGNORED HIM… UNTIL TOMORROW"
+    : "🎬 Mafia Boss Dad & Daughter";
+
   // Inspect physical disk for media asset
-  const mediaFilename = "An_Intelligent_Blind_Gangster_Part1_MasterCut_42s.mp4";
+  const preferredMedia = "Everyone_Ignored_Him_Until_Tomorrow_Ep1_MasterCut_42s.mp4";
+  const fallbackMedia = "An_Intelligent_Blind_Gangster_Part1_MasterCut_42s.mp4";
+  const hasPreferred = [
+    path.join(process.cwd(), ".data", "media", preferredMedia),
+    path.join(process.cwd(), "public", "media", preferredMedia),
+    path.join(process.cwd(), ".next", "standalone", "public", "media", preferredMedia),
+  ].some((p) => fs.existsSync(p));
+  const mediaFilename = hasPreferred ? preferredMedia : fallbackMedia;
   const candidatePaths = [
     path.join(process.cwd(), ".data", "media", mediaFilename),
     path.join(process.cwd(), "public", "media", mediaFilename),
@@ -2312,7 +3239,19 @@ export function buildProductionPackage(
     durationToDisplay = 42;
   }
 
-  const callToAction = winningIdea.title.toLowerCase().includes("school")
+  const callToAction = isMysterySeries
+    ? winningIdea.title.toLowerCase().includes("tomorrow") || winningIdea.title.toLowerCase().includes("message")
+      ? "Who do you think is sending Ren the messages from tomorrow? Drop your theories below! 👇"
+      : winningIdea.title.toLowerCase().includes("friend") || winningIdea.title.toLowerCase().includes("secret")
+      ? "Is Ren's best friend in on the conspiracy? Drop your theories below! 👇"
+      : winningIdea.title.toLowerCase().includes("erased") || winningIdea.title.toLowerCase().includes("classmate")
+      ? "Why is the school erasing all memories of missing students? Drop your thoughts below! 👇"
+      : winningIdea.title.toLowerCase().includes("yamanote") || winningIdea.title.toLowerCase().includes("train")
+      ? "Did Ren change the future or seal his own fate? Drop your theories below! 👇"
+      : winningIdea.title.toLowerCase().includes("exam") || winningIdea.title.toLowerCase().includes("blackboard")
+      ? "Would you use future messages to pass your exams? Drop your reactions below! 👇"
+      : "Who do you think is behind the mysterious messages? Drop your theories below! 👇"
+    : winningIdea.title.toLowerCase().includes("school")
     ? "Would you cross Ren Kurokawa at a school festival? Drop your thoughts below! 👇"
     : winningIdea.title.toLowerCase().includes("janitor") || winningIdea.title.toLowerCase().includes("sweeper")
     ? "Did you realize who the janitor was before he recited the oath? Drop your reactions below! 👇"
@@ -2322,7 +3261,9 @@ export function buildProductionPackage(
     ? "Who ordered the rooftop hit? Drop your theories below! 👇"
     : "Who do you think sent this hit squad? The Chairman or the Osaka Syndicate? Drop your theories below! 👇";
 
-  const pinnedComment = winningIdea.title.toLowerCase().includes("janitor") || winningIdea.title.toLowerCase().includes("sweeper")
+  const pinnedComment = isMysterySeries
+    ? "Drop a 📱 if you think Ren is getting messages from his future self!"
+    : winningIdea.title.toLowerCase().includes("janitor") || winningIdea.title.toLowerCase().includes("sweeper")
     ? "Drop a 🧹 if you knew the janitor founded the entire syndicate!"
     : winningIdea.title.toLowerCase().includes("chess") || winningIdea.title.toLowerCase().includes("grandmaster")
     ? "Drop a ♟️ if you caught the acoustic checkmate!"
@@ -2334,7 +3275,7 @@ export function buildProductionPackage(
 
   return {
     selectedIdea: winningIdea,
-    title: `🎬 Mafia Boss Dad & Daughter — ${winningIdea.seriesEpisode}: ${winningIdea.title} (${durationToDisplay}s) 🔥`,
+    title: `${seriesPrefix} — ${winningIdea.seriesEpisode}: ${winningIdea.title} (${durationToDisplay}s) 🔥`,
     mediaStatus,
     videoValidated,
     openingHook: {
@@ -2350,13 +3291,25 @@ export function buildProductionPackage(
       srtFormattedSubtitles,
     },
     socialPackaging: {
-      caption:
-        `🎬 Mafia Boss Dad & Daughter — ${winningIdea.seriesEpisode}: ${winningIdea.title} (${durationToDisplay}s) 🔥\n\n` +
-        `${captionHeadline}\n\n` +
-        `${storyboard[0].dialogue} 💀\n\n` +
-        `${callToAction}\n\n` +
-        `📺 Watch all episodes & subscribe for Episode #${nextEpNum}!\n\n` +
-        hashtags.map((h) => `#${h}`).join(" "),
+      caption: isMysterySeries
+        ? `🚨 WHAT IF YOU RECEIVED A MESSAGE FROM TOMORROW?\n\n` +
+          `${seriesPrefix} — ${winningIdea.seriesEpisode}: ${winningIdea.title} (${durationToDisplay}s) 🔥\n\n` +
+          `${captionHeadline}\n\n` +
+          `${storyboard[0].dialogue} 💀\n\n` +
+          `👇 THEORY TIME!\n` +
+          `Who do you think is behind the mysterious messages?\n` +
+          `1️⃣ Ren's best friend\n` +
+          `2️⃣ Someone from Ren's past\n` +
+          `3️⃣ Ren himself… from the future...\n\n` +
+          `${callToAction}\n\n` +
+          `⏳ EPISODE 1 — COMING SOON.\n\n` +
+          hashtags.map((h) => `#${h}`).join(" ")
+        : `🎬 Mafia Boss Dad & Daughter — ${winningIdea.seriesEpisode}: ${winningIdea.title} (${durationToDisplay}s) 🔥\n\n` +
+          `${captionHeadline}\n\n` +
+          `${storyboard[0].dialogue} 💀\n\n` +
+          `${callToAction}\n\n` +
+          `📺 Watch all episodes & subscribe for Episode #${nextEpNum}!\n\n` +
+          hashtags.map((h) => `#${h}`).join(" "),
       hashtags,
       pinnedCommentPrompt: pinnedComment,
     },
