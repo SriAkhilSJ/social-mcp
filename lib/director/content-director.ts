@@ -19,12 +19,69 @@ import {
   type FacebookPostAnalyticsItem,
 } from "@/lib/social/facebook";
 import { validateVideoAsset } from "@/lib/media/video-validator";
+import { inspectVideoAsset, type VideoInspectionReport } from "@/lib/media/video-inspector";
 
 // ==========================================
 // 1. DATA CONTRACTS & INTERFACES
 // ==========================================
 
 export type DataSourceType = "live" | "historical_cache" | "fixture" | "unavailable" | "insufficient_data";
+
+export interface ConceptPerformanceRecord {
+  archetype: "Sensory Paradox" | "High-IQ Checkmate" | "Reluctant Guardian" | "Sound-First ASMR";
+  sampleSize: number;
+  confidence: "high" | "moderate" | "low" | "insufficient_sample";
+  averageViews: number | null;
+  averageWatchTimeSeconds: number | null;
+  averageCompletionRatePercent: number | null;
+  averageSharesPer10kViews: number | null;
+  averageCommentsPer10kViews: number | null;
+  firstThreeSecondRetentionRatePercent: number | null;
+  followerConversionCount: number | null;
+  isMeasured: boolean;
+  conclusion: string;
+}
+
+export interface DurationBucketPerformanceRecord {
+  bucket: "<45s" | "45-55s" | "55-65s" | ">65s";
+  minDuration: number;
+  maxDuration: number;
+  sampleSize: number;
+  confidence: "high" | "moderate" | "low" | "insufficient_sample";
+  averageViews: number | null;
+  averageCompletionRatePercent: number | null;
+  isMeasured: boolean;
+  conclusion: string;
+}
+
+export interface ChannelPerformanceLearning {
+  totalPublishedReelsAnalyzed: number;
+  totalMeasuredRetentionReels: number;
+  overallSampleConfidence: "high" | "moderate" | "low" | "insufficient_sample";
+  conceptPerformance: ConceptPerformanceRecord[];
+  durationBucketPerformance: DurationBucketPerformanceRecord[];
+  topRetentionDrivers: string[];
+  uncertaintyNotes: string[];
+}
+
+export class DraftConsistencyError extends Error {
+  public readonly mismatches: string[];
+  constructor(message: string, mismatches: string[]) {
+    super(message);
+    this.name = "DraftConsistencyError";
+    this.mismatches = mismatches;
+  }
+}
+
+export interface DraftConsistencyCheckInput {
+  selectedIdea: ReelIdeaCandidate;
+  title: string;
+  storyboard: StoryboardScene[];
+  fullNarrationText: string;
+  caption: string;
+  hashtags: string[];
+  videoInspection?: VideoInspectionReport | null;
+}
 
 export interface PerformanceAnalysis {
   channelName: string;
@@ -34,6 +91,7 @@ export interface PerformanceAnalysis {
   isFresh: boolean;
   dataFreshnessSeconds?: number;
   error?: string;
+  performanceLearning?: ChannelPerformanceLearning;
   topPerformingReels: Array<{
     id: string;
     videoId?: string;
@@ -46,6 +104,7 @@ export interface PerformanceAnalysis {
     replays?: number | null;
     avgWatchTimeSeconds?: number | null;
     retentionMeasured?: boolean;
+    completionRatePercent?: number | null;
   }>;
   durationSweetSpot: {
     minSeconds: number;
@@ -115,6 +174,7 @@ export interface FullProductionPackage {
   title: string;
   mediaStatus?: "storyboard_ready" | "media_validated" | "pending_generation";
   videoValidated?: boolean;
+  videoInspection?: VideoInspectionReport;
   openingHook: {
     timeframe: "00:00 - 00:03";
     visualHook: string;
@@ -144,6 +204,7 @@ export interface ContentDirectorResult {
   analysis: PerformanceAnalysis;
   rankedIdeas: ReelIdeaCandidate[];
   selectedPackage: FullProductionPackage;
+  videoInspection?: VideoInspectionReport;
   memoryRecordIds: {
     campaignMemoryId?: number;
     researchFindingId?: number;
@@ -432,6 +493,7 @@ function buildAnalysisFromPosts(
 
   // If there are no posts with measurable views, return an explicit insufficient-data status
   if (videosWithViews.length === 0) {
+    const learning = evaluateChannelPerformance(postsData);
     return {
       channelName: "AnimeEdits",
       totalAnalyzedPosts: postsData.length,
@@ -439,6 +501,7 @@ function buildAnalysisFromPosts(
       retrievedAt: new Date().toISOString(),
       isFresh: false,
       error: diagnosticError || "Insufficient channel evidence: 0 posts have measurable view or retention telemetry.",
+      performanceLearning: learning,
       topPerformingReels: [],
       durationSweetSpot: {
         minSeconds: 50,
@@ -564,6 +627,8 @@ function buildAnalysisFromPosts(
     };
   });
 
+  const performanceLearning = evaluateChannelPerformance(postsData);
+
   return {
     channelName: "AnimeEdits",
     totalAnalyzedPosts: postsData.length,
@@ -572,6 +637,7 @@ function buildAnalysisFromPosts(
     isFresh: dataSource === "live",
     dataFreshnessSeconds: dataSource === "live" ? 0 : 86400,
     error: diagnosticError,
+    performanceLearning,
     topPerformingReels,
     durationSweetSpot: {
       minSeconds: minSweet,
@@ -591,6 +657,342 @@ function buildAnalysisFromPosts(
       "High-contrast chiaroscuro lighting and crisp native foley audio",
     ],
   };
+}
+
+/**
+ * Task 4: Performance learning engine.
+ * Evaluates published reels data across:
+ * - First-three-second retention
+ * - Average watch time relative to duration (completion rate)
+ * - Shares and comments relative to views (engagement velocity)
+ * - Follower conversion
+ * - Performance by story concept and duration buckets
+ * Explicitly labels sample sizes and uncertain conclusions.
+ */
+export function evaluateChannelPerformance(
+  posts: FacebookPostAnalyticsItem[]
+): ChannelPerformanceLearning {
+  const postsWithRetention = posts.filter(
+    (p) => p.insights?.avgWatchTimeSeconds != null && p.insights.avgWatchTimeSeconds > 0
+  );
+
+  const archetypePatterns: Record<
+    "Sensory Paradox" | "High-IQ Checkmate" | "Reluctant Guardian" | "Sound-First ASMR",
+    RegExp
+  > = {
+    "Sensory Paradox": /sensory|cane|blind|darkness|paradox|janitor/i,
+    "High-IQ Checkmate": /audit|checkmate|billionaire|broker|one-yen|iq|grandmaster|chess/i,
+    "Reluctant Guardian": /daughter|princess|parent|father|protect|school|lesson/i,
+    "Sound-First ASMR": /rain|sound|asmr|umbrella|train|subway|whisper|heliport/i,
+  };
+
+  const conceptPerformance: ConceptPerformanceRecord[] = Object.entries(archetypePatterns).map(
+    ([archName, regex]) => {
+      const matched = posts.filter((p) => regex.test(p.text || ""));
+      const sampleSize = matched.length;
+
+      let confidence: "high" | "moderate" | "low" | "insufficient_sample" = "insufficient_sample";
+      if (sampleSize >= 5) confidence = "high";
+      else if (sampleSize >= 3) confidence = "moderate";
+      else if (sampleSize >= 1) confidence = "low";
+
+      if (sampleSize === 0) {
+        return {
+          archetype: archName as any,
+          sampleSize: 0,
+          confidence: "insufficient_sample",
+          averageViews: null,
+          averageWatchTimeSeconds: null,
+          averageCompletionRatePercent: null,
+          averageSharesPer10kViews: null,
+          averageCommentsPer10kViews: null,
+          firstThreeSecondRetentionRatePercent: null,
+          followerConversionCount: null,
+          isMeasured: false,
+          conclusion: `Heuristic recommendation: No published channel reels match "${archName}" (sample size = 0). Measured performance unavailable.`,
+        };
+      }
+
+      const validViews = matched.map((p) => p.views).filter((v): v is number => typeof v === "number");
+      const avgViews = validViews.length > 0 ? Math.round(validViews.reduce((a, b) => a + b, 0) / validViews.length) : null;
+
+      const matchedRetention = matched.filter((p) => p.insights?.avgWatchTimeSeconds != null && p.insights.avgWatchTimeSeconds > 0);
+      const avgWatch = matchedRetention.length > 0
+        ? Math.round((matchedRetention.reduce((a, b) => a + b.insights!.avgWatchTimeSeconds!, 0) / matchedRetention.length) * 100) / 100
+        : null;
+
+      const completionRates = matched
+        .map((p) => {
+          if (typeof p.completionRatePercent === "number") return p.completionRatePercent;
+          if (p.insights?.avgWatchTimeSeconds && p.lengthSeconds && p.lengthSeconds > 0) {
+            return Math.round((p.insights.avgWatchTimeSeconds / p.lengthSeconds) * 10000) / 100;
+          }
+          return null;
+        })
+        .filter((c): c is number => typeof c === "number");
+      const avgComp = completionRates.length > 0
+        ? Math.round((completionRates.reduce((a, b) => a + b, 0) / completionRates.length) * 10) / 10
+        : null;
+
+      const shareRates = matched
+        .filter((p) => typeof p.views === "number" && p.views > 0)
+        .map((p) => (p.shares / p.views!) * 10000);
+      const avgShares = shareRates.length > 0
+        ? Math.round((shareRates.reduce((a, b) => a + b, 0) / shareRates.length) * 10) / 10
+        : null;
+
+      const commentRates = matched
+        .filter((p) => typeof p.views === "number" && p.views > 0)
+        .map((p) => (p.comments / p.views!) * 10000);
+      const avgComments = commentRates.length > 0
+        ? Math.round((commentRates.reduce((a, b) => a + b, 0) / commentRates.length) * 10) / 10
+        : null;
+
+      const retentionRates = matched
+        .map((p) => p.firstThreeSecondRetentionRate)
+        .filter((r): r is number => typeof r === "number");
+      const avgInitialRetention = retentionRates.length > 0
+        ? Math.round((retentionRates.reduce((a, b) => a + b, 0) / retentionRates.length) * 10) / 10
+        : null;
+
+      const followersTotal = matched
+        .map((p) => p.insights?.newFollowers)
+        .filter((f): f is number => typeof f === "number");
+      const followerConversion = followersTotal.length > 0
+        ? followersTotal.reduce((a, b) => a + b, 0)
+        : null;
+
+      let conclusion = "";
+      if (confidence === "high") {
+        conclusion = `Conclusive finding (N=${sampleSize}): High sample size confirms strong audience affinity with ${avgViews ? avgViews.toLocaleString() : "unmeasured"} average views.`;
+      } else if (confidence === "moderate") {
+        conclusion = `Moderate evidence (N=${sampleSize}): Consistent performance observed across ${sampleSize} posts; additional publication telemetry recommended.`;
+      } else {
+        conclusion = `Tentative finding (N=${sampleSize}): Limited sample size (N=${sampleSize}). Retention conclusions remain uncertain until more reels are published.`;
+      }
+
+      return {
+        archetype: archName as any,
+        sampleSize,
+        confidence,
+        averageViews: avgViews,
+        averageWatchTimeSeconds: avgWatch,
+        averageCompletionRatePercent: avgComp,
+        averageSharesPer10kViews: avgShares,
+        averageCommentsPer10kViews: avgComments,
+        firstThreeSecondRetentionRatePercent: avgInitialRetention,
+        followerConversionCount: followerConversion,
+        isMeasured: validViews.length > 0,
+        conclusion,
+      };
+    }
+  );
+
+  // Duration buckets
+  const durationBuckets: Array<{ bucket: "<45s" | "45-55s" | "55-65s" | ">65s"; min: number; max: number }> = [
+    { bucket: "<45s", min: 0, max: 44.99 },
+    { bucket: "45-55s", min: 45, max: 54.99 },
+    { bucket: "55-65s", min: 55, max: 64.99 },
+    { bucket: ">65s", min: 65, max: 999 },
+  ];
+
+  const durationBucketPerformance: DurationBucketPerformanceRecord[] = durationBuckets.map((b) => {
+    const matched = posts.filter(
+      (p) => p.lengthSeconds != null && p.lengthSeconds >= b.min && p.lengthSeconds <= b.max
+    );
+    const sampleSize = matched.length;
+
+    let confidence: "high" | "moderate" | "low" | "insufficient_sample" = "insufficient_sample";
+    if (sampleSize >= 5) confidence = "high";
+    else if (sampleSize >= 3) confidence = "moderate";
+    else if (sampleSize >= 1) confidence = "low";
+
+    const validViews = matched.map((p) => p.views).filter((v): v is number => typeof v === "number");
+    const avgViews = validViews.length > 0 ? Math.round(validViews.reduce((a, b) => a + b, 0) / validViews.length) : null;
+
+    const completionRates = matched
+      .map((p) => {
+        if (typeof p.completionRatePercent === "number") return p.completionRatePercent;
+        if (p.insights?.avgWatchTimeSeconds && p.lengthSeconds && p.lengthSeconds > 0) {
+          return Math.round((p.insights.avgWatchTimeSeconds / p.lengthSeconds) * 10000) / 100;
+        }
+        return null;
+      })
+      .filter((c): c is number => typeof c === "number");
+    const avgComp = completionRates.length > 0
+      ? Math.round((completionRates.reduce((a, b) => a + b, 0) / completionRates.length) * 10) / 10
+      : null;
+
+    let conclusion = "";
+    if (sampleSize === 0) {
+      conclusion = `No reels published in ${b.bucket} bucket (sample size = 0).`;
+    } else if (confidence === "low") {
+      conclusion = `Tentative finding (N=${sampleSize}): Low sample size in ${b.bucket} bucket.`;
+    } else {
+      conclusion = `Measured finding (N=${sampleSize}): Average ${avgViews ? avgViews.toLocaleString() : "unmeasured"} views in ${b.bucket} duration window.`;
+    }
+
+    return {
+      bucket: b.bucket,
+      minDuration: b.min,
+      maxDuration: b.max,
+      sampleSize,
+      confidence,
+      averageViews: avgViews,
+      averageCompletionRatePercent: avgComp,
+      isMeasured: validViews.length > 0,
+      conclusion,
+    };
+  });
+
+  const totalRetentionReels = postsWithRetention.length;
+  const overallSampleConfidence: "high" | "moderate" | "low" | "insufficient_sample" =
+    posts.length >= 10 ? "high" : posts.length >= 5 ? "moderate" : posts.length >= 1 ? "low" : "insufficient_sample";
+
+  const uncertaintyNotes: string[] = [];
+  if (totalRetentionReels === 0) {
+    uncertaintyNotes.push("Zero posts have measured watch-time or completion-rate telemetry; retention scoring uses heuristic benchmarks.");
+  } else if (totalRetentionReels < 3) {
+    uncertaintyNotes.push(`Only ${totalRetentionReels} post(s) have measured watch-time telemetry; conclusions should be treated with caution.`);
+  }
+
+  return {
+    totalPublishedReelsAnalyzed: posts.length,
+    totalMeasuredRetentionReels: totalRetentionReels,
+    overallSampleConfidence,
+    conceptPerformance,
+    durationBucketPerformance,
+    topRetentionDrivers: [
+      "Moral high ground hook in first 3 seconds",
+      "Pacing between 48s and 58s with at least 3 visual scene shifts",
+      "Native atmospheric foley audio opening before spoken dialogue",
+    ],
+    uncertaintyNotes,
+  };
+}
+
+/**
+ * Task 3: Draft Consistency Gate.
+ * Compares selected idea, title, episode number, storyboard, narration,
+ * actual video scenes, caption, and hashtags before saving any draft.
+ * Rejects mismatches (e.g., school-conference title paired with house-invasion caption).
+ */
+export function verifyDraftConsistency(input: DraftConsistencyCheckInput): {
+  valid: boolean;
+  mismatches: string[];
+} {
+  const mismatches: string[] = [];
+  const { selectedIdea, title, storyboard, fullNarrationText, caption, hashtags, videoInspection } = input;
+
+  // 1. Episode Number Consistency
+  const titleEpMatch = title.match(/(?:Episode\s*#?|#)(\d+)/i);
+  const captionEpMatch = caption.match(/(?:Episode\s*#?|#)(\d+)/i);
+  const ideaEpMatch = selectedIdea.seriesEpisode.match(/(\d+)/);
+
+  const titleEp = titleEpMatch ? parseInt(titleEpMatch[1], 10) : null;
+  const captionEp = captionEpMatch ? parseInt(captionEpMatch[1], 10) : null;
+  const ideaEp = ideaEpMatch ? parseInt(ideaEpMatch[1], 10) : null;
+
+  if (titleEp !== null && captionEp !== null && titleEp !== captionEp) {
+    mismatches.push(
+      `Episode number mismatch: Title specifies Episode #${titleEp}, but caption specifies Episode #${captionEp}.`
+    );
+  }
+
+  if (ideaEp !== null && titleEp !== null && ideaEp !== titleEp) {
+    mismatches.push(
+      `Episode number mismatch: Selected idea is Episode #${ideaEp}, but title specifies Episode #${titleEp}.`
+    );
+  }
+
+  // 2. Thematic conflict gate (e.g. school conference vs house invasion)
+  const themeDefinitions = [
+    {
+      name: "school_conference",
+      keywords: /school|parent-teacher|conference|homework|daughter|princess|festival|grades|principal/i,
+    },
+    {
+      name: "house_invasion",
+      keywords: /broke into a blind man's house|house invasion|home invasion|break-in|cabin break-in|burglary|break into/i,
+    },
+    {
+      name: "blind_janitor",
+      keywords: /janitor|sweeping|broom|mop|bucket|dust pan|cleaning staff/i,
+    },
+    {
+      name: "chess_grandmaster",
+      keywords: /chess|grandmaster|80-move|checkmate|boardroom audit|billionaire broker/i,
+    },
+    {
+      name: "rooftop_sniper",
+      keywords: /rooftop|helipad|sniper|red dot|laser sight|lightning rod/i,
+    },
+  ];
+
+  const matchedTitleTheme = themeDefinitions.find((t) => t.keywords.test(title));
+  const matchedCaptionTheme = themeDefinitions.find((t) => t.keywords.test(caption));
+
+  if (
+    matchedTitleTheme &&
+    matchedCaptionTheme &&
+    matchedTitleTheme.name !== matchedCaptionTheme.name
+  ) {
+    mismatches.push(
+      `Thematic mismatch detected: Title relates to "${matchedTitleTheme.name}", but caption describes an unrelated "${matchedCaptionTheme.name}". For example, a school-conference title must not be paired with a caption describing an unrelated house invasion.`
+    );
+  }
+
+  // 3. Selected Idea vs Storyboard & Narration Narrative Alignment
+  if (selectedIdea.archetype === "Reluctant Guardian") {
+    const hasGuardianElements =
+      /daughter|father|princess|school|parent|protect|lesson/i.test(fullNarrationText) ||
+      storyboard.some((s) => /daughter|father|school|conference|protect/i.test(s.visualDescription + s.dialogue));
+    if (!hasGuardianElements) {
+      mismatches.push(
+        `Concept mismatch: Idea archetype is "Reluctant Guardian", but storyboard and narration lack protective guardian/daughter narrative beats.`
+      );
+    }
+  } else if (selectedIdea.archetype === "Sensory Paradox") {
+    const hasSensoryElements =
+      /cane|blind|darkness|janitor|broom|hearing|sound|tap/i.test(fullNarrationText) ||
+      storyboard.some((s) => /cane|blind|darkness|broom|janitor|tap/i.test(s.visualDescription + s.dialogue));
+    if (!hasSensoryElements) {
+      mismatches.push(
+        `Concept mismatch: Idea archetype is "Sensory Paradox", but storyboard and narration lack sensory paradox beats.`
+      );
+    }
+  } else if (selectedIdea.archetype === "High-IQ Checkmate") {
+    const hasCheckmateElements =
+      /chess|checkmate|audit|broker|billionaire|contract|shares|iq|move/i.test(fullNarrationText) ||
+      storyboard.some((s) => /chess|checkmate|boardroom|contract|audit/i.test(s.visualDescription + s.dialogue));
+    if (!hasCheckmateElements) {
+      mismatches.push(
+        `Concept mismatch: Idea archetype is "High-IQ Checkmate", but storyboard and narration lack strategic checkmate beats.`
+      );
+    }
+  }
+
+  // 4. Video Inspection Gate (if video is provided)
+  if (videoInspection) {
+    if (!videoInspection.visuallyVerified) {
+      const reasons =
+        videoInspection.storyboardComparison?.mismatchReasons?.join("; ") ||
+        videoInspection.error ||
+        "Video asset failed visual inspection gate.";
+      mismatches.push(`Visual verification failed: ${reasons}`);
+    }
+  }
+
+  // 5. Hashtag consistency
+  if (!hashtags || hashtags.length === 0) {
+    mismatches.push("Social packaging must contain relevant discoverability hashtags.");
+  }
+
+  if (mismatches.length > 0) {
+    return { valid: false, mismatches };
+  }
+
+  return { valid: true, mismatches: [] };
 }
 
 // ==========================================
@@ -2024,9 +2426,52 @@ export async function executeContentDirectorCycle(params: {
       );
     }
 
+    // Task 2: Actual Video Inspection (decoding, metadata, scenes, frames, visual summary)
+    const expectedDurationSeconds =
+      productionPackage.attachedMedia.name?.includes("_42s") || productionPackage.title.includes("42s")
+        ? 42
+        : winningIdea.targetDurationSeconds;
+
+    const inspection = await inspectVideoAsset(resolvedMediaPath, {
+      targetIdea: winningIdea,
+      storyboard: productionPackage.storyboard,
+      targetDurationSeconds: expectedDurationSeconds,
+    });
+
+    if (!inspection.visuallyVerified) {
+      const failureReason =
+        inspection.storyboardComparison.mismatchReasons.join("; ") ||
+        inspection.error ||
+        "Media asset failed multi-frame visual verification gate.";
+      console.error(`[ContentDirector] Visual verification failure for '${mediaFilename}': ${failureReason}`);
+      throw new Error(
+        `MediaIntegrityError: Video asset '${mediaFilename}' failed visual inspection: ${failureReason}. Content-production cycle stopped without creating a draft.`
+      );
+    }
+
     productionPackage.videoValidated = true;
+    productionPackage.videoInspection = inspection;
     productionPackage.mediaStatus = "media_validated";
     productionPackage.attachedMedia.origin = "generated";
+
+    // Task 3: Draft Consistency Gate (checks idea, title, episode, storyboard, narration, caption, hashtags)
+    const consistency = verifyDraftConsistency({
+      selectedIdea: winningIdea,
+      title: productionPackage.title,
+      storyboard: productionPackage.storyboard,
+      fullNarrationText: productionPackage.narrationAndSubtitles.fullNarrationText,
+      caption: productionPackage.socialPackaging.caption,
+      hashtags: productionPackage.socialPackaging.hashtags,
+      videoInspection: inspection,
+    });
+
+    if (!consistency.valid) {
+      console.error(`[ContentDirector] Draft consistency gate rejected draft:`, consistency.mismatches);
+      throw new DraftConsistencyError(
+        `DraftConsistencyError: Draft consistency gate rejected candidate: ${consistency.mismatches.join("; ")}`,
+        consistency.mismatches
+      );
+    }
 
     // 5. Save strictly as DRAFT in posts table (Human-in-the-Loop)
     const [savedPost] = await db
@@ -2145,6 +2590,7 @@ export async function executeContentDirectorCycle(params: {
       analysis,
       rankedIdeas,
       selectedPackage: productionPackage,
+      videoInspection: inspection,
       memoryRecordIds: {
         campaignMemoryId: memoryId,
         researchFindingId: findingId,

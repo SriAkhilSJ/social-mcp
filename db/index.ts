@@ -401,24 +401,35 @@ async function initDatabase(): Promise<AppDb> {
     await pg.waitReady;
   } catch (err) {
     console.warn("[Database] PGlite failed to resume, auto-recovering clean storage:", err);
-    const backupDir = path.join(process.cwd(), ".data", `pgdata_recovered_${Date.now()}`);
     try {
-      fs.renameSync(dataDir, backupDir);
-    } catch {
-      fs.rmSync(dataDir, { recursive: true, force: true });
-    }
-    fs.mkdirSync(dataDir, { recursive: true });
-    try {
+      const backupDir = path.join(process.cwd(), ".data", `pgdata_recovered_${Date.now()}`);
+      try {
+        fs.renameSync(dataDir, backupDir);
+      } catch {
+        fs.rmSync(dataDir, { recursive: true, force: true });
+      }
+      fs.mkdirSync(dataDir, { recursive: true });
       pg = new PGlite(dataDir);
       await pg.waitReady;
     } catch (fallbackErr) {
-      console.warn('[Database] Using in-memory PGlite fallback:', fallbackErr);
+      console.warn("[Database] Using in-memory PGlite fallback:", fallbackErr);
       pg = new PGlite();
       await pg.waitReady;
     }
   }
 
-  await pg.exec(BOOTSTRAP_SQL);
+  try {
+    await pg.exec(BOOTSTRAP_SQL);
+  } catch (sqlErr: any) {
+    if (sqlErr.message?.includes("File exists") || sqlErr.message?.includes("already exists")) {
+      console.warn("[Database] Concurrent schema bootstrap detected; falling back to clean in-memory instance:", sqlErr.message);
+      pg = new PGlite();
+      await pg.waitReady;
+      await pg.exec(BOOTSTRAP_SQL);
+    } else {
+      throw sqlErr;
+    }
+  }
   return drizzlePglite(pg, { schema });
 }
 

@@ -6,10 +6,14 @@ import {
   generateAndRankIdeas,
   buildProductionPackage,
   executeContentDirectorCycle,
+  verifyDraftConsistency,
+  DraftConsistencyError,
+  evaluateChannelPerformance,
   type PerformanceAnalysis,
   type ReelIdeaCandidate,
 } from "../lib/director/content-director";
 import { validateVideoAsset } from "../lib/media/video-validator";
+import { inspectVideoAsset } from "../lib/media/video-inspector";
 import { getDb } from "../db";
 import { posts, contentDrafts, campaignMemories, campaigns, users } from "../db/schema";
 import { eq, and } from "drizzle-orm";
@@ -837,6 +841,247 @@ describe("Phase 2: Autonomous Content Director Unit & Integration Tests", () => 
     const [dbPost] = await db.select().from(posts).where(eq(posts.id, result.draftId)).limit(1);
     assert.ok(dbPost);
     assert.equal(dbPost.status, "draft");
+  });
+
+  it("12. Task 2 Video Inspection: extracts stream metadata, scene cuts, 3 representative frames, and visual summary", async () => {
+    const videoPath = path.join(process.cwd(), "public", "media", "An_Intelligent_Blind_Gangster_Part1_MasterCut_42s.mp4");
+    assert.ok(fs.existsSync(videoPath), "Production mastercut must physically exist on disk");
+
+    const report = await inspectVideoAsset(videoPath, { targetDurationSeconds: 42 });
+
+    assert.equal(report.exists, true);
+    assert.equal(report.canDecode, true);
+    assert.ok(report.videoMetadata, "Video metadata must be extracted");
+    assert.equal(report.videoMetadata?.codecName, "h264");
+    assert.equal(report.videoMetadata?.width, 1080);
+    assert.equal(report.videoMetadata?.height, 1920);
+    assert.equal(report.videoMetadata?.isVertical, true);
+    assert.equal(report.videoMetadata?.aspectRatio, "9:16");
+    assert.ok(report.audioMetadata, "Audio metadata must be extracted");
+    assert.equal(report.audioMetadata?.codecName, "aac");
+    assert.ok(report.sceneChanges.length >= 2, "Must detect scene cuts");
+    assert.equal(report.visualSummary.frames.length, 3, "Must extract exactly 3 representative frames (beginning, middle, end)");
+    for (const frame of report.visualSummary.frames) {
+      assert.equal(frame.isValidImage, true, `Frame at ${frame.position} must be a valid image buffer`);
+      assert.ok(frame.sizeBytes > 1000, `Frame at ${frame.position} must be non-empty`);
+    }
+    assert.equal(report.visuallyVerified, true, "Valid vertical video with audio, scene progression, and matching duration must pass visual verification");
+  });
+
+  it("12a. Task 2 Video Inspection: does NOT mark video verified if duration deviates or aspect ratio is horizontal", async () => {
+    const videoPath = path.join(process.cwd(), "public", "media", "An_Intelligent_Blind_Gangster_Part1_MasterCut_42s.mp4");
+    // Test with candidate expecting 65s duration (42s actual video deviates by 23s)
+    const reportMismatched = await inspectVideoAsset(videoPath, { targetDurationSeconds: 65 });
+    assert.equal(reportMismatched.visuallyVerified, false, "Must not mark as verified when duration deviates beyond tolerance");
+    assert.ok(reportMismatched.storyboardComparison.mismatchReasons.some((r) => r.includes("deviates from candidate target duration")));
+  });
+
+  it("13. Task 3 Draft Consistency Gate: rejects thematic mismatches (school conference title with house invasion caption)", () => {
+    const candidateIdea: ReelIdeaCandidate = {
+      id: "candidate_conf",
+      title: "Parent-Teacher Conference in Blood",
+      seriesEpisode: "#31",
+      archetype: "Reluctant Guardian",
+      targetDurationSeconds: 42,
+      hookOpening: "Parent-teacher conference",
+      coreConflict: "Protecting daughter from syndicate enforcers at school",
+      emotionalPayoff: "Daughter finishes homework peacefully",
+      loopMechanism: "Pencil tap loops into heartbeat",
+      scoringBasis: {
+        dataSource: "live",
+        retentionMeasured: true,
+        archetypeMultiplier: 9.0,
+        durationDeviationSeconds: 0,
+        methodology: "test",
+      },
+      scores: {
+        hookRetentionScore: 9,
+        audienceAffinityScore: 9,
+        shareabilityScore: 9,
+        loopPotentialScore: 9,
+        durationOptimalityScore: 9,
+        overallWeightedScore: 90,
+      },
+    };
+
+    const conflictingDraft = {
+      selectedIdea: candidateIdea,
+      title: "🎬 Mafia Boss Dad & Daughter — Episode #31: Parent-Teacher Conference in Blood (42s) 🔥",
+      storyboard: [
+        {
+          sceneNumber: 1,
+          name: "School Gate",
+          timeframe: "00:00 - 00:03",
+          visualDescription: "Ren Kurokawa arriving at the school gate",
+          cameraMotion: "Push-in",
+          lightingAndColor: "Cinematic noir",
+          veoPrompt: "Ren at school gate",
+          nativeAudioCue: "School bell",
+          speaker: "Ren",
+          dialogue: "I have a parent-teacher meeting.",
+          subtitles: "I have a parent-teacher meeting.",
+        },
+      ],
+      fullNarrationText: "Ren Kurokawa attending his daughter's parent-teacher conference.",
+      // Conflict: caption describes house invasion rather than school conference
+      caption: "Syndicate broke into a blind man's house, not knowing who was inside... Episode #31",
+      hashtags: ["#MafiaBossDad", "#AnimeEdits"],
+    };
+
+    const result = verifyDraftConsistency(conflictingDraft);
+    assert.equal(result.valid, false, "Must reject draft with thematic mismatch between title and caption");
+    assert.ok(result.mismatches.some((m) => m.includes("Thematic mismatch detected")));
+    assert.ok(result.mismatches.some((m) => m.includes("school-conference title must not be paired with a caption describing an unrelated house invasion")));
+  });
+
+  it("13a. Task 3 Draft Consistency Gate: rejects episode number mismatch between title and caption", () => {
+    const candidateIdea: ReelIdeaCandidate = {
+      id: "candidate_ep_mismatch",
+      title: "Blind Janitor in the Syndicate Vault",
+      seriesEpisode: "#31",
+      archetype: "Sensory Paradox",
+      targetDurationSeconds: 42,
+      hookOpening: "A cane taps",
+      coreConflict: "Janitor cleaning floor while cartel audits vault",
+      emotionalPayoff: "Cartel realizes who swept the floor",
+      loopMechanism: "Cane tap loop",
+      scoringBasis: {
+        dataSource: "live",
+        retentionMeasured: true,
+        archetypeMultiplier: 9.0,
+        durationDeviationSeconds: 0,
+        methodology: "test",
+      },
+      scores: {
+        hookRetentionScore: 9,
+        audienceAffinityScore: 9,
+        shareabilityScore: 9,
+        loopPotentialScore: 9,
+        durationOptimalityScore: 9,
+        overallWeightedScore: 90,
+      },
+    };
+
+    const mismatchedEpisodeDraft = {
+      selectedIdea: candidateIdea,
+      title: "🎬 Blind Janitor — Episode #31: The Founder's Oath (42s) 🔥",
+      storyboard: [
+        {
+          sceneNumber: 1,
+          name: "Vault Corridor",
+          timeframe: "00:00 - 00:03",
+          visualDescription: "Ren sweeping floor with broom",
+          cameraMotion: "Tracking shot",
+          lightingAndColor: "Obsidian noir",
+          veoPrompt: "Blind janitor sweeping floor",
+          nativeAudioCue: "Broom scrape",
+          speaker: "Ren",
+          dialogue: "Just doing my rounds.",
+          subtitles: "Just doing my rounds.",
+        },
+      ],
+      fullNarrationText: "The blind janitor tapped his cane and swept the marble floor.",
+      caption: "🎬 Blind Janitor — Episode #28 (Mismatched number) #AnimeEdits",
+      hashtags: ["#AnimeEdits", "#BlindJanitor"],
+    };
+
+    const result = verifyDraftConsistency(mismatchedEpisodeDraft);
+    assert.equal(result.valid, false, "Must reject draft when title specifies Episode #31 but caption specifies Episode #28");
+    assert.ok(result.mismatches.some((m) => m.includes("Episode number mismatch")));
+  });
+
+  it("13b. Task 3 Draft Consistency Gate: accepts properly aligned draft package", () => {
+    const candidateIdea: ReelIdeaCandidate = {
+      id: "candidate_valid",
+      title: "Blind Janitor in the Syndicate Vault",
+      seriesEpisode: "#31",
+      archetype: "Sensory Paradox",
+      targetDurationSeconds: 42,
+      hookOpening: "A single cane tap in darkness",
+      coreConflict: "Janitor cleaning floor while cartel audits vault",
+      emotionalPayoff: "Cartel realizes who swept the floor",
+      loopMechanism: "Cane tap loop",
+      scoringBasis: {
+        dataSource: "live",
+        retentionMeasured: true,
+        archetypeMultiplier: 9.0,
+        durationDeviationSeconds: 0,
+        methodology: "test",
+      },
+      scores: {
+        hookRetentionScore: 9,
+        audienceAffinityScore: 9,
+        shareabilityScore: 9,
+        loopPotentialScore: 9,
+        durationOptimalityScore: 9,
+        overallWeightedScore: 90,
+      },
+    };
+
+    const alignedDraft = {
+      selectedIdea: candidateIdea,
+      title: "🎬 Blind Janitor — Episode #31: The Founder's Oath (42s) 🔥",
+      storyboard: [
+        {
+          sceneNumber: 1,
+          name: "Vault Corridor",
+          timeframe: "00:00 - 00:03",
+          visualDescription: "Ren sweeping floor with broom, tapping cane in darkness",
+          cameraMotion: "Tracking shot",
+          lightingAndColor: "Obsidian noir",
+          veoPrompt: "Blind janitor sweeping floor",
+          nativeAudioCue: "Broom scrape",
+          speaker: "Ren",
+          dialogue: "Just doing my rounds.",
+          subtitles: "Just doing my rounds.",
+        },
+      ],
+      fullNarrationText: "The blind janitor tapped his cane and swept the marble floor in complete darkness.",
+      caption: "🎬 Blind Janitor — Episode #31: The Founder's Oath (42s) 🔥\nThe cartel thought he was just an old cleaning man... #AnimeEdits #BlindJanitor",
+      hashtags: ["#AnimeEdits", "#BlindJanitor"],
+    };
+
+    const result = verifyDraftConsistency(alignedDraft);
+    assert.equal(result.valid, true, "Properly aligned draft must pass consistency gate");
+    assert.equal(result.mismatches.length, 0);
+  });
+
+  it("14. Task 4 Performance Learning: evaluates sample sizes, retention rates, completion rates, and labels uncertain conclusions", () => {
+    const samplePosts = [
+      {
+        id: "fb_p_1",
+        metaPostId: "p_1",
+        text: "Reluctant Guardian Episode #1: Protecting his daughter at school",
+        postedAt: new Date(),
+        likes: 1200,
+        comments: 20,
+        shares: 60,
+        views: 80000,
+        lengthSeconds: 50,
+        insights: {
+          totalPlays: 80000,
+          initialPlays: 72000,
+          avgWatchTimeSeconds: 15.0,
+        },
+      },
+    ];
+
+    const learning = evaluateChannelPerformance(samplePosts);
+
+    assert.equal(learning.totalPublishedReelsAnalyzed, 1);
+    const guardian = learning.conceptPerformance.find((c) => c.archetype === "Reluctant Guardian");
+    assert.ok(guardian);
+    assert.equal(guardian.sampleSize, 1);
+    assert.equal(guardian.confidence, "low", "N=1 must be labeled low confidence");
+    assert.ok(guardian.conclusion.includes("Tentative finding"), "Must state conclusions are tentative with small sample size");
+    assert.equal(guardian.averageCompletionRatePercent, 30.0, "15s watch / 50s duration = 30% completion rate");
+
+    const unmatchedCheckmate = learning.conceptPerformance.find((c) => c.archetype === "High-IQ Checkmate");
+    assert.ok(unmatchedCheckmate);
+    assert.equal(unmatchedCheckmate.sampleSize, 0);
+    assert.equal(unmatchedCheckmate.confidence, "insufficient_sample");
+    assert.equal(unmatchedCheckmate.isMeasured, false);
+    assert.ok(unmatchedCheckmate.conclusion.includes("Heuristic recommendation"));
   });
 
   it("cleanup: exits cleanly", () => {
