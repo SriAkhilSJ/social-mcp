@@ -830,7 +830,7 @@ export async function fetchFacebookPageAnalytics(
         p.metaPostId === target ||
         p.videoId === target ||
         p.reelId === target ||
-        p.id.endsWith(target) ||
+        p.id.endsWith(`_${target}`) ||
         (p.postUrl && p.postUrl.includes(target))
     );
 
@@ -905,7 +905,7 @@ export async function fetchFacebookPageAnalytics(
           p.metaPostId === target ||
           p.videoId === target ||
           p.reelId === target ||
-          p.id.endsWith(target) ||
+          p.id.endsWith(`_${target}`) ||
           (p.postUrl && p.postUrl.includes(target))
       );
       if (benchmarkMatch) {
