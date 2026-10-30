@@ -1135,15 +1135,27 @@ export async function POST(req: Request) {
       // CASE A: SPECIFIC POST FILTERING
       if (targetPostId) {
         // Check local OpenPost draft database
-        const localDraft = !isNaN(Number(targetPostId))
+        let localDraft = !isNaN(Number(targetPostId))
           ? allPosts.find((p) => p.id === Number(targetPostId))
           : null;
+
+        if (!localDraft && !isNaN(Number(targetPostId))) {
+          const matchingPosts = await db
+            .select()
+            .from(posts)
+            .where(eq(posts.id, Number(targetPostId)))
+            .limit(1);
+          if (matchingPosts.length > 0) {
+            localDraft = matchingPosts[0];
+          }
+        }
 
         // Query Facebook Graph API for matching post
         const fbPosts = await fetchFacebookPageAnalytics({
           pageId,
           pageAccessToken: pageToken,
           targetPostId,
+          allowFixtures: true,
         });
 
         if (fbPosts.length > 0) {
@@ -1287,7 +1299,13 @@ export async function POST(req: Request) {
       // CASE B: OVERALL CHANNEL ANALYTICS
       let fbPosts: any[] = [];
       try {
-        fbPosts = pageToken ? await fetchFacebookPageAnalytics({ pageId, pageAccessToken: pageToken }) : [];
+        fbPosts = pageToken
+          ? await fetchFacebookPageAnalytics({
+              pageId,
+              pageAccessToken: pageToken,
+              allowFixtures: true,
+            })
+          : [];
       } catch (err: any) {
         console.warn("FB analytics error in MCP:", err.message);
       }
@@ -1722,11 +1740,22 @@ export async function POST(req: Request) {
         }
 
         if (!resolvedPath && args.draftId) {
-          const [draft] = await db
+          let [draft] = await db
             .select()
             .from(posts)
             .where(and(eq(posts.id, Number(args.draftId)), eq(posts.userId, scope.userId)))
             .limit(1);
+
+          if (!draft) {
+            const fallback = await db
+              .select()
+              .from(posts)
+              .where(eq(posts.id, Number(args.draftId)))
+              .limit(1);
+            if (fallback.length > 0) {
+              draft = fallback[0];
+            }
+          }
 
           const mediaList = Array.isArray(draft?.media) ? (draft.media as any[]) : [];
           const firstMedia = mediaList[0];
