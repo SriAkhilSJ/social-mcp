@@ -1,43 +1,63 @@
 [
   {
     "draftId": 9,
-    "deletedAt": "2026-10-30T23:45:01.584Z",
+    "deletedAt": "2026-10-31T05:39:32.374Z",
     "reason": "deletion_tombstone"
   },
   {
     "draftId": 265,
-    "deletedAt": "2026-10-30T23:45:01.584Z",
+    "deletedAt": "2026-10-31T05:39:32.374Z",
     "reason": "deletion_tombstone"
   },
   {
     "draftId": 331,
-    "deletedAt": "2026-10-30T23:45:01.584Z",
+    "deletedAt": "2026-10-31T05:39:32.374Z",
     "reason": "deletion_tombstone"
   },
   {
     "draftId": 397,
-    "deletedAt": "2026-10-30T23:45:01.584Z",
+    "deletedAt": "2026-10-31T05:39:32.374Z",
     "reason": "deletion_tombstone"
   },
   {
     "draftId": 463,
-    "deletedAt": "2026-10-30T23:45:01.584Z",
+    "deletedAt": "2026-10-31T05:39:32.374Z",
     "reason": "deletion_tombstone"
   },
   {
     "draftId": 529,
-    "deletedAt": "2026-10-30T23:45:01.584Z",
+    "deletedAt": "2026-10-31T05:39:32.374Z",
     "reason": "deletion_tombstone"
   },
   {
     "draftId": 595,
-    "deletedAt": "2026-10-30T23:45:01.584Z",
+    "deletedAt": "2026-10-31T05:39:32.374Z",
     "reason": "deletion_tombstone"
   },
   {
     "draftId": 661,
+    "deletedAt": "2026-10-31T05:39:32.374Z",
+    "reason": "deletion_tombstone"
+  },
+  {
+    "draftId": 727,
+    "deletedAt": "2026-10-31T05:39:32.374Z",
+    "reason": "deletion_tombstone"
+  },
+  {
+    "draftId": 793,
+    "deletedAt": "2026-10-31T05:39:32.374Z",
+    "reason": "deletion_tombstone"
+  },
+  {
+    "draftId": 859,
+    "deletedAt": "2026-10-31T05:39:32.374Z",
+    "reason": "deletion_tombstone"
+  },
+  {
+    "draftId": 925,
     "title": "[INTEGRATION_TEST_TEMP] Autopilot Safety Check",
-    "deletedAt": "2026-10-30T23:45:01.584Z",
+    "deletedAt": "2026-10-31T05:39:32.374Z",
     "reason": "user_requested_deletion"
   }
 ]

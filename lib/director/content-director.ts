@@ -19,7 +19,12 @@ import {
   type FacebookPostAnalyticsItem,
 } from "@/lib/social/facebook";
 import { validateVideoAsset } from "@/lib/media/video-validator";
-import { inspectVideoAsset, type VideoInspectionReport } from "@/lib/media/video-inspector";
+import {
+  inspectVideoAsset,
+  parseSrtSubtitles,
+  DEFAULT_ANIME_CHARACTER_BIBLE,
+  type VideoInspectionReport,
+} from "@/lib/media/video-inspector";
 
 // ==========================================
 // 1. DATA CONTRACTS & INTERFACES
@@ -980,6 +985,35 @@ export function verifyDraftConsistency(input: DraftConsistencyCheckInput): {
         videoInspection.error ||
         "Video asset failed visual inspection gate.";
       mismatches.push(`Visual verification failed: ${reasons}`);
+    }
+
+    if (videoInspection.consistencyScore && videoInspection.consistencyScore.status === "rejected") {
+      mismatches.push(
+        `Video consistency rejected (${videoInspection.consistencyScore.overallScore}/100): ${videoInspection.consistencyScore.summary}`
+      );
+    }
+
+    if (videoInspection.defects) {
+      for (const missing of videoInspection.defects.missingScenes) {
+        if (missing.severity === "critical") {
+          mismatches.push(`Critical missing scene #${missing.sceneIndex}: ${missing.reason}`);
+        }
+      }
+      for (const charDefect of videoInspection.defects.inconsistentCharacters) {
+        if (charDefect.severity === "critical") {
+          mismatches.push(`Critical character inconsistency at ${charDefect.timestampSeconds}s: ${charDefect.reason}`);
+        }
+      }
+      for (const unrelated of videoInspection.defects.unrelatedFootage) {
+        if (unrelated.severity === "critical") {
+          mismatches.push(`Unrelated footage at ${unrelated.timestampSeconds}s: ${unrelated.reason}`);
+        }
+      }
+      for (const narMismatch of videoInspection.defects.narrationMismatches) {
+        if (narMismatch.severity === "critical") {
+          mismatches.push(`Critical narration mismatch at ${narMismatch.timestampSeconds}s: ${narMismatch.reason}`);
+        }
+      }
     }
   }
 
@@ -3389,6 +3423,8 @@ export async function executeContentDirectorCycle(params: {
       targetIdea: winningIdea,
       storyboard: productionPackage.storyboard,
       targetDurationSeconds: expectedDurationSeconds,
+      characterBible: DEFAULT_ANIME_CHARACTER_BIBLE,
+      asrTranscript: parseSrtSubtitles(productionPackage.narrationAndSubtitles.srtFormattedSubtitles),
     });
 
     if (!inspection.visuallyVerified) {

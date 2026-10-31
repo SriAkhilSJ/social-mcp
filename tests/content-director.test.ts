@@ -13,7 +13,12 @@ import {
   type ReelIdeaCandidate,
 } from "../lib/director/content-director";
 import { validateVideoAsset } from "../lib/media/video-validator";
-import { inspectVideoAsset } from "../lib/media/video-inspector";
+import {
+  inspectVideoAsset,
+  parseSrtSubtitles,
+  DEFAULT_ANIME_CHARACTER_BIBLE,
+  calculateVideoConsistencyScore,
+} from "../lib/media/video-inspector";
 import { recordDraftTombstone, isDraftTombstoned, getTombstonedDraftIds } from "../lib/tombstones";
 import { fetchFacebookPageAnalytics } from "../lib/social/facebook";
 import { getDb } from "../db";
@@ -885,6 +890,174 @@ describe("Phase 2: Autonomous Content Director Unit & Integration Tests", () => 
     const reportMismatched = await inspectVideoAsset(videoPath, { targetDurationSeconds: 65 });
     assert.equal(reportMismatched.visuallyVerified, false, "Must not mark as verified when duration deviates beyond tolerance");
     assert.ok(reportMismatched.storyboardComparison.mismatchReasons.some((r) => r.includes("deviates from candidate target duration")));
+  });
+
+  it("12b. Adaptive scene-based frame extraction: extracts frames around every detected scene transition and action events", async () => {
+    const videoPath = path.join(process.cwd(), "public", "media", "An_Intelligent_Blind_Gangster_Part1_MasterCut_42s.mp4");
+    const report = await inspectVideoAsset(videoPath, {
+      targetDurationSeconds: 42,
+      samplingMode: "adaptive",
+    });
+
+    assert.ok(report.sceneChanges.length >= 2, "Must detect multiple scene cuts");
+    // Verify adaptive keyframes are extracted
+    assert.ok(report.extractedKeyframes.length >= 6, `Must extract at least 6 adaptive keyframes (found ${report.extractedKeyframes.length})`);
+
+    // Verify frames around transitions
+    const transitionFrames = report.extractedKeyframes.filter(
+      (f) => f.position === "scene_transition" || f.eventType?.startsWith("transition_")
+    );
+    assert.ok(transitionFrames.length >= 4, "Must extract pre-cut and post-cut frames for detected transitions");
+    assert.ok(transitionFrames.some((f) => f.eventType === "transition_pre"), "Must have pre-cut frames");
+    assert.ok(transitionFrames.some((f) => f.eventType === "transition_post"), "Must have post-cut frames");
+
+    // Verify action event frames
+    const hookFrame = report.extractedKeyframes.find((f) => f.eventType === "hook");
+    assert.ok(hookFrame, "Must extract opening hook frame");
+    assert.ok(hookFrame.timestampSeconds <= 2.0, "Hook frame must be within first 2 seconds");
+
+    const climaxFrame = report.extractedKeyframes.find((f) => f.eventType === "midpoint_climax");
+    assert.ok(climaxFrame, "Must extract midpoint climax frame");
+
+    const cliffhangerFrame = report.extractedKeyframes.find((f) => f.eventType === "cliffhanger");
+    assert.ok(cliffhangerFrame, "Must extract cliffhanger frame");
+
+    const resolutionFrame = report.extractedKeyframes.find((f) => f.eventType === "resolution");
+    assert.ok(resolutionFrame, "Must extract closing resolution frame");
+
+    // Verify all frames are valid JPEGs with base64 data
+    for (const frame of report.extractedKeyframes) {
+      assert.equal(frame.isValidImage, true, `Frame at ${frame.timestampSeconds}s must be valid`);
+      assert.ok(frame.sizeBytes > 1000, `Frame at ${frame.timestampSeconds}s must be non-empty`);
+      assert.ok(frame.base64Data, `Frame at ${frame.timestampSeconds}s must have base64Data for vision model`);
+    }
+  });
+
+  it("12c. Multimodal Vision input: feeds actual binary image buffers (inlineData), not just string URLs", async () => {
+    const videoPath = path.join(process.cwd(), "public", "media", "An_Intelligent_Blind_Gangster_Part1_MasterCut_42s.mp4");
+    const report = await inspectVideoAsset(videoPath, {
+      targetDurationSeconds: 42,
+      samplingMode: "adaptive",
+      characterBible: DEFAULT_ANIME_CHARACTER_BIBLE,
+    });
+
+    // Verify keyframes contain actual base64 image data for feeding directly to multimodal vision
+    assert.ok(report.extractedKeyframes.length > 0);
+    const validBase64Frames = report.extractedKeyframes.filter(
+      (f) => typeof f.base64Data === "string" && f.base64Data.length > 500
+    );
+    assert.equal(
+      validBase64Frames.length,
+      report.extractedKeyframes.length,
+      "Every extracted frame must provide binary base64 data for multimodal vision models"
+    );
+
+    // Verify base64 decodes back to authentic JPEG magic bytes (FF D8 FF)
+    const firstFrameBuffer = Buffer.from(validBase64Frames[0].base64Data!, "base64");
+    assert.equal(firstFrameBuffer[0], 0xff);
+    assert.equal(firstFrameBuffer[1], 0xd8);
+  });
+
+  it("12d. Timestamped ASR & scene descriptions: combines ASR narration transcript with visual scene descriptions", async () => {
+    const videoPath = path.join(process.cwd(), "public", "media", "An_Intelligent_Blind_Gangster_Part1_MasterCut_42s.mp4");
+    const testSrt = `1\n00:00:00,000 --> 00:00:10,500\nRen Kurokawa: 3:14 AM. The phone vibrates against the cold floor.\n\n2\n00:00:10,500 --> 00:00:21,000\nRen Kurokawa: No caller ID. Look at the desk next to you.\n\n3\n00:00:21,000 --> 00:00:31,500\nRen Kurokawa: Desk four is empty.\n\n4\n00:00:31,500 --> 00:00:42,000\nRen Kurokawa: Until a message arrives timestamped tomorrow.`;
+
+    const parsedAsr = parseSrtSubtitles(testSrt);
+    assert.equal(parsedAsr.length, 4, "Must parse 4 SRT ASR segments");
+    assert.equal(parsedAsr[0].speaker, "Ren Kurokawa");
+    assert.equal(parsedAsr[0].startTimeSeconds, 0);
+    assert.equal(parsedAsr[0].endTimeSeconds, 10.5);
+
+    const report = await inspectVideoAsset(videoPath, {
+      targetDurationSeconds: 42,
+      asrTranscript: parsedAsr,
+    });
+
+    assert.ok(report.sceneDescriptions.length >= 3, "Must produce scene-by-scene descriptions");
+    for (const scene of report.sceneDescriptions) {
+      assert.ok(scene.sceneIndex >= 1, "Must have valid scene index");
+      assert.ok(scene.durationSeconds > 0, "Must have positive duration");
+      assert.ok(scene.visualDescription.length > 10, "Must have rich visual description");
+      assert.ok(scene.asrTranscript.length > 5, "Must combine spoken ASR text");
+      assert.ok(scene.keyframeTimestamps.length > 0, "Must associate keyframe timestamps");
+      assert.ok(scene.detectedActions.length > 0, "Must identify detected actions");
+    }
+  });
+
+  it("12e. Storyboard comparison & defect detection: detects missing scenes, inconsistent characters, unrelated footage, subtitle errors, and narration mismatches", async () => {
+    const videoPath = path.join(process.cwd(), "public", "media", "An_Intelligent_Blind_Gangster_Part1_MasterCut_42s.mp4");
+
+    // Storyboard expecting 6 scenes, but 42s video has 4 scenes -> scene 5 and 6 should be detected as missing
+    const storyboardWithMissingScenes = [
+      { sceneNumber: 1, timeframe: "00:00 - 00:10", visualDescription: "Ren in bedroom 3:14 AM", nativeAudioCue: "rain", dialogue: "3:14 AM vibrating phone", veoPrompt: "scene 1" },
+      { sceneNumber: 2, timeframe: "00:10 - 00:21", visualDescription: "Ren looks at locker", nativeAudioCue: "buzz", dialogue: "Look at locker", veoPrompt: "scene 2" },
+      { sceneNumber: 3, timeframe: "00:21 - 00:31", visualDescription: "Desk 4 empty", nativeAudioCue: "gasp", dialogue: "Desk four is empty", veoPrompt: "scene 3" },
+      { sceneNumber: 4, timeframe: "00:31 - 00:42", visualDescription: "Message from tomorrow", nativeAudioCue: "glitch", dialogue: "Timestamped tomorrow", veoPrompt: "scene 4" },
+      { sceneNumber: 5, timeframe: "00:42 - 00:52", visualDescription: "Future train platform showdown", nativeAudioCue: "train screech", dialogue: "You shouldn't have come here", veoPrompt: "scene 5" },
+      { sceneNumber: 6, timeframe: "00:52 - 01:02", visualDescription: "Rooftop escape route", nativeAudioCue: "wind", dialogue: "Run before midnight", veoPrompt: "scene 6" },
+    ];
+
+    const report = await inspectVideoAsset(videoPath, {
+      targetDurationSeconds: 42,
+      storyboard: storyboardWithMissingScenes,
+    });
+
+    assert.ok(report.defects.missingScenes.length >= 2, "Must detect missing scenes #5 and #6 from storyboard");
+    assert.equal(report.defects.missingScenes[0].severity, "critical");
+    assert.ok(report.defects.missingScenes.some((d) => d.sceneIndex === 5 || d.sceneIndex === 6));
+  });
+
+  it("12f. Tiered verification distinction: distinguishes technical validation, sampled visual verification, and full semantic verification", async () => {
+    const videoPath = path.join(process.cwd(), "public", "media", "An_Intelligent_Blind_Gangster_Part1_MasterCut_42s.mp4");
+
+    // 1. Sampled mode: only 3 frames sampled -> MUST NEVER claim full verification
+    const sampledReport = await inspectVideoAsset(videoPath, {
+      targetDurationSeconds: 42,
+      samplingMode: "sampled",
+    });
+
+    assert.equal(sampledReport.verificationTier.level, "sampled_visual_verification");
+    assert.equal(sampledReport.verificationTier.technicalValid, true);
+    assert.equal(sampledReport.verificationTier.sampledVisualValid, true);
+    assert.equal(sampledReport.verificationTier.fullSemanticValid, false, "3 frames must NEVER be full semantic valid");
+    assert.equal(sampledReport.verificationTier.claimFullVerificationAllowed, false, "Must NEVER claim full verification from three frames");
+    assert.ok(sampledReport.verificationTier.explanation.includes("Only 3 sparse frames inspected"));
+
+    // 2. Full adaptive mode: all transitions + vision model + ASR -> full semantic verification
+    const fullReport = await inspectVideoAsset(videoPath, {
+      targetDurationSeconds: 42,
+      samplingMode: "adaptive",
+      characterBible: DEFAULT_ANIME_CHARACTER_BIBLE,
+    });
+
+    assert.equal(fullReport.verificationTier.level, "full_semantic_verification");
+    assert.equal(fullReport.verificationTier.fullSemanticValid, true);
+    assert.equal(fullReport.verificationTier.claimFullVerificationAllowed, true);
+    assert.equal(fullReport.fullSemanticVerified, true);
+  });
+
+  it("12g. Consistency score & draft gate: computes weighted consistency score and preserves draft-first approval", async () => {
+    const videoPath = path.join(process.cwd(), "public", "media", "An_Intelligent_Blind_Gangster_Part1_MasterCut_42s.mp4");
+
+    const report = await inspectVideoAsset(videoPath, {
+      targetDurationSeconds: 42,
+      characterBible: DEFAULT_ANIME_CHARACTER_BIBLE,
+    });
+
+    assert.ok(report.consistencyScore.overallScore >= 80, `Consistency score must pass (got ${report.consistencyScore.overallScore})`);
+    assert.equal(report.consistencyScore.status, "passed");
+    assert.ok(report.consistencyScore.breakdown.storyboardAlignmentScore > 0);
+    assert.ok(report.consistencyScore.breakdown.characterConsistencyScore > 0);
+    assert.ok(report.consistencyScore.breakdown.narrationAsrScore > 0);
+    assert.ok(report.consistencyScore.breakdown.subtitleSyncScore > 0);
+    assert.ok(report.consistencyScore.breakdown.pacingAndTransitionsScore > 0);
+
+    // Verify timestamped evidence log
+    assert.ok(report.timestampedEvidenceLog.length >= 5, "Must log timestamped verification evidence");
+    assert.ok(report.timestampedEvidenceLog.some((e) => e.type === "scene_transition"));
+    assert.ok(report.timestampedEvidenceLog.some((e) => e.type === "keyframe"));
+    assert.ok(report.timestampedEvidenceLog.some((e) => e.type === "asr_beat"));
+    assert.ok(report.timestampedEvidenceLog.some((e) => e.type === "verification_milestone"));
   });
 
   it("13. Task 3 Draft Consistency Gate: rejects thematic mismatches (school conference title with house invasion caption)", () => {

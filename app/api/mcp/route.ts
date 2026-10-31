@@ -762,7 +762,7 @@ export async function POST(req: Request) {
             {
               name: "inspect_video",
               description:
-                "Inspect an MP4 video asset using FFprobe and FFmpeg. Confirms file existence and decoding, extracts stream metadata (resolution, frame rate, audio), detects scene cuts, extracts 3 representative frames (beginning, middle, end), produces a timestamped visual summary, and verifies alignment against storyboard and duration requirements. A video is never marked visually verified just because FFprobe succeeds.",
+                "Inspect an MP4 video asset using FFprobe, FFmpeg, adaptive scene-based frame extraction, multimodal vision evaluation with actual image inputs, timestamped ASR alignment, storyboard comparison, defect detection, and consistency scoring. Distinguishes technical validation, sampled visual verification, and full semantic verification. A video is never marked fully verified just because FFprobe succeeds or three frames are sampled.",
               inputSchema: {
                 type: "object",
                 properties: {
@@ -782,6 +782,19 @@ export async function POST(req: Request) {
                     type: "number",
                     description: "Optional expected duration in seconds to verify against (±4s tolerance)",
                   },
+                  samplingMode: {
+                    type: "string",
+                    enum: ["sampled", "adaptive", "full_semantic"],
+                    description: "Frame sampling mode: 'sampled' (3 frames), 'adaptive' (all scene transitions + action events), or 'full_semantic' (full vision model + ASR verification)",
+                  },
+                  requireFullSemanticVerification: {
+                    type: "boolean",
+                    description: "If true, visuallyVerified will require full semantic verification (never satisfied by 3 frames alone)",
+                  },
+                  characterBible: {
+                    type: "string",
+                    description: "Optional character bible text to audit visual appearance and consistency against",
+                  },
                 },
               },
             },
@@ -795,6 +808,9 @@ export async function POST(req: Request) {
                   mediaUrl: { type: "string" },
                   draftId: { type: "number" },
                   targetDurationSeconds: { type: "number" },
+                  samplingMode: { type: "string", enum: ["sampled", "adaptive", "full_semantic"] },
+                  requireFullSemanticVerification: { type: "boolean" },
+                  characterBible: { type: "string" },
                 },
               },
             },
@@ -1929,6 +1945,9 @@ export async function POST(req: Request) {
 
         const report = await inspectVideoAsset(resolvedPath, {
           targetDurationSeconds: args.targetDurationSeconds ? Number(args.targetDurationSeconds) : undefined,
+          samplingMode: args.samplingMode,
+          requireFullSemanticVerification: args.requireFullSemanticVerification === true,
+          characterBible: args.characterBible,
         });
 
         return NextResponse.json(
